@@ -19,19 +19,37 @@ def create_birds_eye_view(velo):
     iy = h - 1
     delta = 0.1
 
-    while y < 70:
-        row = velo[np.logical_and(velo[:,0] >= y, velo[:,0] < (y + delta))]
-        x = -40.0
-        ix = w - 1
-        while x < 40.0:
-            window = row[np.logical_and(row[:,1] >= x, row[:,1] < (x + delta))]
-            if window.shape[0] > 0:
-                output[iy,ix] = window[:,3].max()
-            else:
-                output[iy,ix] = 0.0
+    sorted_idx = velo[:,0].argsort()
+    d = velo[sorted_idx]
 
-            x += delta
-            ix -= 1
+    current_idx = 0;
+
+    while y < 70:
+        row = [];
+        while d[current_idx, 0] < y + delta:
+            row.append(d[current_idx,:]);
+            current_idx += 1
+
+        if len(row):
+            row = np.stack(row, axis=0)
+            sorted_idx = row[:,1].argsort()
+            row = row[sorted_idx]
+
+            x = -40.0
+            ix = w - 1
+            row_idx = 0;
+            while x < 40.0:
+                window = [];
+                while row_idx < len(row) and row[row_idx,1] < x + delta:
+                    window.append(row[row_idx])
+                    row_idx +=1
+
+                if len(window):
+                    window = np.stack(window, axis=0)
+                    output[iy,ix] = window[:,3].max()
+
+                x += delta
+                ix -= 1
 
         y += delta
         iy -= 1
