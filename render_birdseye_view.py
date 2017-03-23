@@ -3,14 +3,19 @@ import numpy as np
 import cv2
 import moviepy.editor as mpy
 import imageutils
+import argparse
 from Utils import progress_bar
-basedir = './kitti'
-date = '2011_09_26'
-drive = '0001'
-
 # The range argument is optional - default is None, which loads the whole dataset
-data = pykitti.raw(basedir, date, drive)
+
+parser = argparse.ArgumentParser()
+parser.add_argument('date', help="Date of the drive, format : YYYY_MM_DD.")
+parser.add_argument('drive', help="Number of the drive.", type=int)
+parser.add_argument('-d', dest="basedir", default="./kitti", help="Name of the data directory.")
+args = parser.parse_args()
+
+data = pykitti.raw(args.basedir, args.date, "%04d" % args.drive)
 data.load_velo()
+
 
 def coord_for_point(point):
     x = point[0]
