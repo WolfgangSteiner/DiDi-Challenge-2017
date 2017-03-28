@@ -3,7 +3,7 @@ import sys
 import errno
 import uuid
 import time
-import urllib.request
+#import urllib.request
 import shutil
 import cv2
 import tarfile
@@ -51,24 +51,24 @@ def save_screenshot(cv_img):
 
 
 # Taken from https://blog.shichao.io/2012/10/04/progress_speed_indicator_for_urlretrieve_in_python.html
-def reporthook(count, block_size, total_size):
-    global start_time
-    if count == 0:
-        start_time = time.time()
-        return
-    duration = time.time() - start_time
-    progress_size = int(count * block_size)
-    speed = int(progress_size / (1024 * duration))
-    info = "%d/%d MB, %d KB/s" % (progress_size / (1024 * 1024), total_size / (1024 * 1024), speed)
-    progress_bar(count * block_size, total_size, unit="MB")
-
-
-def download(url, filename=None):
-    if filename==None:
-        filename = url.split("/")[-1]
-
-    urllib.request.urlretrieve(url, filename, reporthook)
-
+# def reporthook(count, block_size, total_size):
+#     global start_time
+#     if count == 0:
+#         start_time = time.time()
+#         return
+#     duration = time.time() - start_time
+#     progress_size = int(count * block_size)
+#     speed = int(progress_size / (1024 * duration))
+#     info = "%d/%d MB, %d KB/s" % (progress_size / (1024 * 1024), total_size / (1024 * 1024), speed)
+#     progress_bar(count * block_size, total_size, unit="MB")
+#
+#
+# def download(url, filename=None):
+#     if filename==None:
+#         filename = url.split("/")[-1]
+#
+#     urllib.request.urlretrieve(url, filename, reporthook)
+#
 #    urllib.urlretrieve(url, filename, reporthook)
 
 
