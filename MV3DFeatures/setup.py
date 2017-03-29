@@ -8,6 +8,7 @@ ext = Extension(
     'MV3DFeatures._MV3DFeatures',
     sources = ['src/_MV3DFeatures.cpp'],
     include_dirs=[np.get_include()],
+    extra_compile_args=['-std=c++11'],
     libraries=["boost_python"])
 
 setup(
