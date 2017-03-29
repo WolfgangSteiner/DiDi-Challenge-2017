@@ -1,22 +1,42 @@
 //==============================================================================================
 #include <boost/python.hpp>
+#include <utility>
+#include <algorithm>
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 //==============================================================================================
 
-int offset_for_point(float x, float y)
+int offset_for_point(
+  float x, float y,
+  const std::pair<float,float>& aXRange, const std::pair<float,float>& aYRange,
+  float aDeltaX, float aDeltaY,
+  int aWidth, int aHeight)
 {
-  if (x < 0.0f || x >= 70.0f || y < -40.0f || y >=40.0f)
+  if (x < aYRange.first || x >= aYRange.second || y < aXRange.first || y >=aXRange.second)
   {
     return -1;
   }
   else
   {
-    const int px = 800 - 1 - int((y + 40.0f) * 10.0f);
-    const int py = 700 - 1 - int(x * 10.0f);
+    const int px = aWidth - 1 - int((y - aXRange.first) / aDeltaX);
+    const int py = aHeight - 1 - int(x / aDeltaY);
 
-    return py * 800 + px;
+//    px = std::max(0, std::min(px, aWidth - 1));
+//    py = std::max(0, std::min(py, aHeight - 1));
+
+    return py * aWidth + px;
   }
+}
+
+//----------------------------------------------------------------------------------------------
+
+std::pair<float,float> unpack_range(PyObject* apRange)
+{
+  auto pRange = reinterpret_cast<PyArrayObject*>(apRange);
+  assert(PyArray_NDIM(pRange) == 1);
+  assert(PyArray_DIM(pRange, 0) == 2);
+  const float* pRangeData = reinterpret_cast<const float*>(PyArray_DATA(pRange));
+  return std::make_pair(pRangeData[0],pRangeData[1]);
 }
 
 
@@ -24,9 +44,9 @@ int offset_for_point(float x, float y)
 
 void _create_birds_eye_view(
   PyObject* apPointCloud,
-  PyObject* apDensityMap,
-  PyObject* apHeightMap,
-  PyObject* apIntensityMap)
+  PyObject* apFeatureMap,
+  PyObject* apSrcXRange,
+  PyObject* apSrcYRange)
 {
   auto pPointCloud = reinterpret_cast<PyArrayObject*>(apPointCloud);
   const int num_dimensions_point_cloud = PyArray_NDIM(pPointCloud);
@@ -36,14 +56,26 @@ void _create_birds_eye_view(
   const size_t kPointSize = 4;
   const float* pData = reinterpret_cast<float*>(PyArray_DATA(pPointCloud));
 
-  auto pHeightMap = reinterpret_cast<PyArrayObject*>(apHeightMap);
-  float* pHeightMapPtr = reinterpret_cast<float*>(PyArray_DATA(pHeightMap));
+  auto pFeatureMap = reinterpret_cast<PyArrayObject*>(apFeatureMap);
+  float* pFeatureMapPtr = reinterpret_cast<float*>(PyArray_DATA(pFeatureMap));
+  const int kNumDimensionsFeatureMap = PyArray_NDIM(pFeatureMap);
+  assert(kNumDimensionsFeatureMap == 3);
+  const int kNumFeatureMaps = PyArray_DIM(pFeatureMap,0);
+  assert(kNumFeatureMaps >= 3);
 
-  auto pIntensityMap = reinterpret_cast<PyArrayObject*>(apIntensityMap);
-  float* pIntensityMapPtr = reinterpret_cast<float*>(PyArray_DATA(pIntensityMap));
+  const int h = PyArray_DIM(pFeatureMap, 1);
+  const int w = PyArray_DIM(pFeatureMap, 2);
+  const size_t kFeatureMapSize = w * h;
 
-  auto pDensityMap = reinterpret_cast<PyArrayObject*>(apDensityMap);
-  float* pDensityMapPtr = reinterpret_cast<float*>(PyArray_DATA(pDensityMap));
+  float* pIntensityMapPtr = pFeatureMapPtr;
+  float* pDensityMapPtr = pFeatureMapPtr + kFeatureMapSize;
+  float* pHeightMapPtr = pFeatureMapPtr + 2 * kFeatureMapSize;
+
+  const auto kSrcXRange = unpack_range(apSrcXRange);
+  const auto kSrcYRange = unpack_range(apSrcYRange);
+
+  const float kDeltaX = (kSrcXRange.second - kSrcXRange.first) / w;
+  const float kDeltaY = (kSrcYRange.second - kSrcYRange.first) / h;
 
   for (int i = 0; i < num_lidar_points; ++i)
   {
@@ -52,13 +84,12 @@ void _create_birds_eye_view(
     const float y = pPoint[1];
     const float z = pPoint[2];
     const float r = pPoint[3];
-    const int kOffset = offset_for_point(x,y);
+    const int kOffset = offset_for_point(x,y, kSrcXRange, kSrcYRange, kDeltaX, kDeltaY, w, h);
 
     if (kOffset > -1)
     {
       if (z > pHeightMapPtr[kOffset])
       {
-        assert(kOffset < 700 * 800);
         pHeightMapPtr[kOffset] = z;
 	      pIntensityMapPtr[kOffset] = r;
       }

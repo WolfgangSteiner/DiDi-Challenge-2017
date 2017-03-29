@@ -29,23 +29,29 @@ def image_from_map(map):
 frames = []
 
 start_time = time.time()
+w,h = 256,256
+src_x_range = [-25.6, 25.6]
+y_min = 3.2
+src_y_range = [y_min, y_min + 51.2]
 
 for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
     progress_bar(i, len(data.velo))
-    intensity_map, density_map, height_map = create_birds_eye_view(velo)
+    intensity_map, density_map, height_map = create_birds_eye_view(velo, src_x_range, src_y_range, [w,h])
     img = stereo_pair.right
     im_height,im_width = img.shape[0:2]
-    im_offset = (2400 - im_width) // 2
-    frame = np.zeros((700 + im_height,2400,3))
+    frame_width = max(im_width, 3*w)
+    frame_height = im_height + h
+    im_offset = (frame_width - im_width) // 2
+    frame = np.zeros((frame_height,frame_width,3))
     frame[0:im_height,im_offset:im_offset+im_width,:] = imageutils.bgr2rgb(img)
-    frame[im_height:im_height+700,0:800,:] = image_from_map(intensity_map)
-    frame[im_height:im_height+700,800:1600,:] = image_from_map(density_map)
-    frame[im_height:im_height+700,1600:2400,:] = image_from_map(height_map)
+    frame[im_height:frame_height,0:w,:] = image_from_map(intensity_map)
+    frame[im_height:frame_height,w:2*w,:] = image_from_map(density_map)
+    frame[im_height:frame_height,2*w:3*w,:] = image_from_map(height_map)
     tr = TextRenderer(frame)
     text_offset = 20
-    tr.text_at("Intensity", (400, im_height+text_offset), horizontal_align="center")
-    tr.text_at("Density", (1200, im_height+text_offset), horizontal_align="center")
-    tr.text_at("Height", (2000, im_height+text_offset), horizontal_align="center")
+    tr.text_at("Intensity", (w//2, im_height+text_offset), horizontal_align="center")
+    tr.text_at("Density", (3*w//2, im_height+text_offset), horizontal_align="center")
+    tr.text_at("Height", (5*w//2, im_height+text_offset), horizontal_align="center")
 
     frames.append(frame)
 
