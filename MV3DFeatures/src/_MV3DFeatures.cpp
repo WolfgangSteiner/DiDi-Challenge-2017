@@ -2,6 +2,7 @@
 #include <boost/python.hpp>
 #include <utility>
 #include <algorithm>
+#include <vector>
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 //==============================================================================================
@@ -42,29 +43,51 @@ std::pair<float,float> unpack_range(PyObject* apRange)
 
 //----------------------------------------------------------------------------------------------
 
+std::vector<int> get_shape(PyObject* apArray)
+{
+  auto pArray = reinterpret_cast<PyArrayObject*>(apArray);
+  const int kNumDimensions = PyArray_NDIM(pArray);
+  std::vector<int> shape;
+  for (int i=0; i < kNumDimensions; ++i)
+  {
+    shape.push_back(PyArray_DIM(pArray, i));
+  }
+
+  return shape;
+}
+
+
+//----------------------------------------------------------------------------------------------
+
+float* get_data(PyObject* apArray)
+{
+  auto pArray = reinterpret_cast<PyArrayObject*>(apArray);
+  return reinterpret_cast<float*>(PyArray_DATA(pArray));
+}
+
+
+//----------------------------------------------------------------------------------------------
+
 void _create_birds_eye_view(
   PyObject* apPointCloud,
   PyObject* apFeatureMap,
   PyObject* apSrcXRange,
   PyObject* apSrcYRange)
 {
-  auto pPointCloud = reinterpret_cast<PyArrayObject*>(apPointCloud);
-  const int num_dimensions_point_cloud = PyArray_NDIM(pPointCloud);
-  assert(num_dimensions_point_cloud == 2);
-  const int num_lidar_points = PyArray_DIM(pPointCloud,0);
-
   const size_t kPointSize = 4;
-  const float* pData = reinterpret_cast<float*>(PyArray_DATA(pPointCloud));
+  const auto kPointCloudShape = get_shape(apPointCloud);
+  assert(kPointCloudShape.size() == 2);
+  const int kNumLidarPoints = kPointCloudShape[0];
+  const float* pPointData = get_data(apPointCloud);
 
-  auto pFeatureMap = reinterpret_cast<PyArrayObject*>(apFeatureMap);
-  float* pFeatureMapPtr = reinterpret_cast<float*>(PyArray_DATA(pFeatureMap));
-  const int kNumDimensionsFeatureMap = PyArray_NDIM(pFeatureMap);
-  assert(kNumDimensionsFeatureMap == 3);
-  const int kNumFeatureMaps = PyArray_DIM(pFeatureMap,0);
+  const auto kFeatureMapShape = get_shape(apFeatureMap);
+  float* pFeatureMapPtr = get_data(apFeatureMap);
+  assert(kFeatureMapShape.size() == 3);
+  const int kNumFeatureMaps = kFeatureMapShape[0];
   assert(kNumFeatureMaps >= 3);
 
-  const int h = PyArray_DIM(pFeatureMap, 1);
-  const int w = PyArray_DIM(pFeatureMap, 2);
+  const int h = kFeatureMapShape[1];
+  const int w = kFeatureMapShape[2];
   const size_t kFeatureMapSize = w * h;
 
   float* pIntensityMapPtr = pFeatureMapPtr;
@@ -77,9 +100,9 @@ void _create_birds_eye_view(
   const float kDeltaX = (kSrcXRange.second - kSrcXRange.first) / w;
   const float kDeltaY = (kSrcYRange.second - kSrcYRange.first) / h;
 
-  for (int i = 0; i < num_lidar_points; ++i)
+  for (int i = 0; i < kNumLidarPoints; ++i)
   {
-    const float* pPoint = &pData[i * kPointSize];
+    const float* pPoint = &pPointData[i * kPointSize];
     const float x = pPoint[0];
     const float y = pPoint[1];
     const float z = pPoint[2];
