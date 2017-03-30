@@ -1,1 +1,1 @@
-from MV3DFeatures import create_birds_eye_view
+from MV3DFeatures import create_birds_eye_view, create_front_view
