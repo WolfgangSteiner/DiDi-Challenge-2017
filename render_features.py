@@ -4,10 +4,12 @@ import cv2
 import moviepy.editor as mpy
 import imageutils
 import argparse
-from MV3DFeatures import create_birds_eye_view
+from MV3DFeatures import create_birds_eye_view, create_front_view
 from Utils import progress_bar
-from drawing import TextRenderer
+import drawing
 import time
+from Tracklet import parse_tracklets, bounding_boxes_for_frame
+from VectorMath import *
 
 # The range argument is optional - default is None, which loads the whole dataset
 
@@ -23,35 +25,125 @@ data = pykitti.raw(args.basedir, args.date, "%04d" % args.drive, r)
 data.load_velo()
 data.load_rgb(format='cv2')
 
+
 def image_from_map(map):
     return imageutils.expand_channel((map * 255).astype(np.uint8))
 
+
+def normalize_and_render_map(map):
+    min_value = map.min()
+    max_value = map.max()
+
+    normalized_map = (map - min_value) / (max_value - min_value)
+    return image_from_map(normalized_map)
+
+
+def transform_bounding_box_bv(bbox, img_size, x_range, y_range):
+    w,h = img_size
+    x1,x2 = x_range
+    y1,y2 = y_range
+    factor = w / (x2 - x1)
+    t = Transformation()
+    t.flip_xy()
+    t.mirror_xy()
+    t.translate(-x1,0,0)
+    t.scale(factor)
+    t.translate(0,h,0)
+    return t.transform(bbox)
+
+
+def draw_bounding_box_bv(image, bbox):
+    color = (255,0,0)
+    drawing.draw_line(image, bbox[0,0:2], bbox[1,0:2], color)
+    drawing.draw_line(image, bbox[1,0:2], bbox[2,0:2], color)
+    drawing.draw_line(image, bbox[2,0:2], bbox[3,0:2], color)
+    drawing.draw_line(image, bbox[3,0:2], bbox[0,0:2], color)
+
+
+def draw_bounding_box_image(image, bbox):
+    color = (255,0,0)
+    drawing.draw_line(image, bbox[0,0:2], bbox[1,0:2], color)
+    drawing.draw_line(image, bbox[1,0:2], bbox[2,0:2], color)
+    drawing.draw_line(image, bbox[2,0:2], bbox[3,0:2], color)
+    drawing.draw_line(image, bbox[3,0:2], bbox[0,0:2], color)
+
+    drawing.draw_line(image, bbox[4,0:2], bbox[5,0:2], color)
+    drawing.draw_line(image, bbox[5,0:2], bbox[6,0:2], color)
+    drawing.draw_line(image, bbox[6,0:2], bbox[7,0:2], color)
+    drawing.draw_line(image, bbox[7,0:2], bbox[4,0:2], color)
+
+    drawing.draw_line(image, bbox[0,0:2], bbox[4,0:2], color)
+    drawing.draw_line(image, bbox[1,0:2], bbox[5,0:2], color)
+    drawing.draw_line(image, bbox[2,0:2], bbox[6,0:2], color)
+    drawing.draw_line(image, bbox[3,0:2], bbox[7,0:2], color)
+
+
+
+def draw_bounding_boxes_bv(image, tracklets, frame_idx, x_range, y_range):
+    img_size = imageutils.img_size(image)
+    for bbox in bounding_boxes_for_frame(tracklets, frame_idx):
+        bbox = transform_bounding_box_bv(bbox, img_size, x_range, y_range)
+        draw_bounding_box_bv(image, bbox)
+
+
+def draw_bounding_boxes_image(image, tracklets, frame_idx, transformation):
+    for bbox in bounding_boxes_for_frame(tracklets, frame_idx):
+        bbox = transformation.transform(bbox)
+        draw_bounding_box_image(image, bbox)
+
+
+
 frames = []
+tracklets = parse_tracklets("%s/%s/%s_drive_%04d_sync/tracklet_labels.xml" %(args.basedir, args.date, args.date, args.drive))
 
 start_time = time.time()
-w,h = 256,256
+bv_w,bv_h = 512,512
+fv_w,fv_h = 512,64
 src_x_range = [-25.6, 25.6]
+z_min = -1.5
 y_min = 3.2
 src_y_range = [y_min, y_min + 51.2]
 
 for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
     progress_bar(i, len(data.velo))
-    intensity_map, density_map, height_map = create_birds_eye_view(velo, src_x_range, src_y_range, [w,h])
-    img = stereo_pair.right
+    bv_intensity, bv_density, bv_height = create_birds_eye_view(velo, src_x_range, src_y_range, [bv_w,bv_h])
+    fv_intensity, fv_distance, fv_height = create_front_view(velo, [fv_w,fv_h], -1.5, 1.0, 0.08, 0.2)
+    img = np.array(stereo_pair.right)
     im_height,im_width = img.shape[0:2]
-    frame_width = max(im_width, 3*w)
-    frame_height = im_height + h
-    im_offset = (frame_width - im_width) // 2
+    text_height = 40
+    text_offset = 10
+    frame_width = max(im_width, 3*bv_w, 3*fv_w)
+    frame_height = im_height + bv_h + fv_h + 2 * text_height
     frame = np.zeros((frame_height,frame_width,3))
-    frame[0:im_height,im_offset:im_offset+im_width,:] = imageutils.bgr2rgb(img)
-    frame[im_height:frame_height,0:w,:] = image_from_map(intensity_map)
-    frame[im_height:frame_height,w:2*w,:] = image_from_map(density_map)
-    frame[im_height:frame_height,2*w:3*w,:] = image_from_map(height_map)
-    tr = TextRenderer(frame)
-    text_offset = 20
-    tr.text_at("Intensity", (w//2, im_height+text_offset), horizontal_align="center")
-    tr.text_at("Density", (3*w//2, im_height+text_offset), horizontal_align="center")
-    tr.text_at("Height", (5*w//2, im_height+text_offset), horizontal_align="center")
+
+    im_offset = (frame_width - im_width) // 2
+    imageutils.paste_img(frame, imageutils.bgr2rgb(img), [im_offset, 0])
+
+    bv_intensity = image_from_map(bv_intensity)
+    draw_bounding_boxes_bv(bv_intensity, tracklets, i, src_x_range, src_y_range)
+
+    y = im_height + text_height
+    imageutils.paste_img(frame, bv_intensity, [0,y])
+    imageutils.paste_img(frame, image_from_map(bv_density), [bv_w,y])
+    imageutils.paste_img(frame, image_from_map(bv_height), [2*bv_w,y])
+
+    y += bv_h + text_height
+    imageutils.paste_img(frame, image_from_map(fv_intensity), [0,y])
+    imageutils.paste_img(frame, normalize_and_render_map(fv_distance), [fv_w,y])
+    imageutils.paste_img(frame, normalize_and_render_map(fv_height), [2*fv_w,y])
+
+
+    tr = drawing.TextRenderer(frame)
+    for i,s in enumerate(("Intensity", "Density", "Height")):
+        x = bv_w // 2 + i * bv_w
+        y = im_height + text_offset
+        tr.text_at(s, (x,y), horizontal_align="center")
+
+    for i,s in enumerate(("Intensity", "Distance", "Height")):
+        x = fv_w // 2 + i * fv_w
+        y = im_height + bv_h + text_height + text_offset
+        tr.text_at(s, (x,y), horizontal_align="center")
+
 
     frames.append(frame)
 

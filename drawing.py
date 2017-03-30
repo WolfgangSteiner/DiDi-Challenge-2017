@@ -31,7 +31,7 @@ def draw_pixel(img, pos, color=cvcolor.white):
 
 def draw_line(img, p1, p2, color, thickness=1, antialias=True):
     line_type = cv2.LINE_AA if antialias else 8
-    cv2.line(img, (p1[0],p1[1]), (p2[0],p2[1]), color=color, lineType=line_type, thickness=thickness)
+    cv2.line(img, (int(p1[0]),int(p1[1])), (int(p2[0]),int(p2[1])), color=color, lineType=line_type, thickness=thickness)
 
 
 def draw_rectangle(img, rect, color, thickness=1):

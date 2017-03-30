@@ -47,11 +47,12 @@ def num_channels(img):
 def paste_img(target_img, source_img, pos):
     h,w = source_img.shape[0:2]
     n_ch = num_channels(source_img)
+    x,y = pos
     if n_ch == 1:
         for i_ch in range(0,num_channels(target_img)):
-            target_img[pos[0]:pos[0]+h,pos[1]:pos[1]+w,i_ch] = source_img
+            target_img[y:y+h,x:x+w,i_ch] = source_img
     else:
-        target_img[pos[0]:pos[0]+h,pos[1]:pos[1]+w,:] = source_img
+        target_img[y:y+h,x:x+w,:] = source_img
 
 
 def scale_img(img, factor):
