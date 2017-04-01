@@ -6,8 +6,11 @@ class Transformation(object):
         self.m = matrix_identity()
 
 
-    def add_transformation(self, m):
-        self.m = np.matmul(m, self.m)
+    def add_transformation(self, t):
+        if (type(t) == Transformation):
+            self.add_transformation(t.m)
+        else:
+            self.m = np.matmul(t, self.m)
 
 
     def transform(self, coords):
@@ -39,6 +42,14 @@ class Transformation(object):
         self.add_transformation(matrix_scale(s))
 
 
+    def rotate_y(self, phi):
+        self.add_transformation(matrix_rotation_y(phi))
+
+
+    def rotate_z(self, phi):
+        self.add_transformation(matrix_rotation_z(phi))
+
+
 
 def matrix_identity():
     m = np.zeros((4,4), np.float32)
@@ -48,6 +59,15 @@ def matrix_identity():
 
 def matrix_zero():
     m = np.zeros((4,4), np.float32)
+    return m
+
+
+def matrix_rotation_y(phi):
+    m = matrix_identity()
+    m[0,0] = math.cos(phi)
+    m[0,2] = -math.sin(phi)
+    m[2,0] = math.sin(phi)
+    m[2,2] = math.cos(phi)
     return m
 
 

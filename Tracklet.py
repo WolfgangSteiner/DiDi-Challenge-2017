@@ -45,15 +45,15 @@ class TrackletObject(object):
         pose = self.pose_for_frame(frame_idx)
         bbox = np.zeros((8,4))
         h, w, l = self.size
-        bbox[0,:] = [ l/2, -w/2, -h/2, 1.0]
-        bbox[1,:] = [ l/2,  w/2, -h/2, 1.0]
-        bbox[2,:] = [-l/2,  w/2, -h/2, 1.0]
-        bbox[3,:] = [-l/2, -w/2, -h/2, 1.0]
+        bbox[0,:] = [ l/2,  w/2, 0.0, 1.0]
+        bbox[1,:] = [ l/2, -w/2, 0.0, 1.0]
+        bbox[2,:] = [-l/2, -w/2, 0.0, 1.0]
+        bbox[3,:] = [-l/2,  w/2, 0.0, 1.0]
         bbox[4:8,:] = bbox[0:4,:] + [ 0.0, 0.0, h, 0.0]
         rz = pose.rotation[2]
         t = Transformation()
-        t.add_transformation(matrix_rotation_z(rz))
-        t.add_transformation(matrix_translate(pose.translation))
+        t.rotate_z(rz)
+        t.translate(pose.translation)
         return t.transform(bbox)
 
 

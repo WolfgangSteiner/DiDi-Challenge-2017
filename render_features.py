@@ -10,6 +10,7 @@ import drawing
 import time
 from Tracklet import parse_tracklets, bounding_boxes_for_frame
 from VectorMath import *
+import Calibration
 
 # The range argument is optional - default is None, which loads the whole dataset
 
@@ -61,7 +62,7 @@ def draw_bounding_box_bv(image, bbox):
 
 
 def draw_bounding_box_image(image, bbox):
-    color = (255,0,0)
+    color = (0,0,255)
     drawing.draw_line(image, bbox[0,0:2], bbox[1,0:2], color)
     drawing.draw_line(image, bbox[1,0:2], bbox[2,0:2], color)
     drawing.draw_line(image, bbox[2,0:2], bbox[3,0:2], color)
@@ -86,15 +87,36 @@ def draw_bounding_boxes_bv(image, tracklets, frame_idx, x_range, y_range):
         draw_bounding_box_bv(image, bbox)
 
 
+def project_bbox(bbox):
+    projected_bbox = np.zeros((8,2))
+    w = 1392
+    for i,v in enumerate(bbox):
+        projected_bbox[i,0] = bbox[i,0] / bbox[i,2] / bbox[i,3]
+        projected_bbox[i,1] = bbox[i,1] / bbox[i,2] / bbox[i,3]
+
+    return projected_bbox
+
+
 def draw_bounding_boxes_image(image, tracklets, frame_idx, transformation):
     for bbox in bounding_boxes_for_frame(tracklets, frame_idx):
         bbox = transformation.transform(bbox)
-        draw_bounding_box_image(image, bbox)
+        draw_bounding_box_image(image, project_bbox(bbox))
 
 
 
 frames = []
 tracklets = parse_tracklets("%s/%s/%s_drive_%04d_sync/tracklet_labels.xml" %(args.basedir, args.date, args.date, args.drive))
+T_velo_cam = Calibration.read_calibration_matrix_velo_to_cam("%s/%s/calib_velo_to_cam.txt" % (args.basedir, args.date))
+
+cam_to_cam_file = "%s/%s/calib_cam_to_cam.txt" % (args.basedir, args.date)
+P_rect = Calibration.read_calibration_matrix(cam_to_cam_file, "P_rect_03", 3, 4)
+R_rect = Calibration.read_calibration_matrix(cam_to_cam_file, "R_rect_00", 3, 3)
+
+view_transformation = Transformation()
+view_transformation.add_transformation(T_velo_cam)
+view_transformation.add_transformation(R_rect)
+view_transformation.add_transformation(P_rect)
+
 
 start_time = time.time()
 bv_w,bv_h = 512,512
@@ -109,6 +131,9 @@ for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
     bv_intensity, bv_density, bv_height = create_birds_eye_view(velo, src_x_range, src_y_range, [bv_w,bv_h])
     fv_intensity, fv_distance, fv_height = create_front_view(velo, [fv_w,fv_h], -1.5, 1.0, 0.08, 0.2)
     img = np.array(stereo_pair.right)
+    draw_bounding_boxes_image(img, tracklets, i, view_transformation)
+
+
     im_height,im_width = img.shape[0:2]
     text_height = 40
     text_offset = 10
@@ -122,10 +147,17 @@ for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
     bv_intensity = image_from_map(bv_intensity)
     draw_bounding_boxes_bv(bv_intensity, tracklets, i, src_x_range, src_y_range)
 
+    bv_density = image_from_map(bv_density)
+    draw_bounding_boxes_bv(bv_density, tracklets, i, src_x_range, src_y_range)
+
+    bv_height = image_from_map(bv_height)
+    draw_bounding_boxes_bv(bv_height, tracklets, i, src_x_range, src_y_range)
+
+
     y = im_height + text_height
     imageutils.paste_img(frame, bv_intensity, [0,y])
-    imageutils.paste_img(frame, image_from_map(bv_density), [bv_w,y])
-    imageutils.paste_img(frame, image_from_map(bv_height), [2*bv_w,y])
+    imageutils.paste_img(frame, bv_density, [bv_w,y])
+    imageutils.paste_img(frame, bv_height, [2*bv_w,y])
 
     y += bv_h + text_height
     imageutils.paste_img(frame, image_from_map(fv_intensity), [0,y])
