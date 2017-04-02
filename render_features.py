@@ -11,6 +11,7 @@ import time
 from Tracklet import parse_tracklets, bounding_boxes_for_frame
 from VectorMath import *
 import Calibration
+from renderutils import image_from_map, normalize_and_render_map
 
 # The range argument is optional - default is None, which loads the whole dataset
 
@@ -25,18 +26,6 @@ r = range(1) if args.single_frame else None
 data = pykitti.raw(args.basedir, args.date, "%04d" % args.drive, r)
 data.load_velo()
 data.load_rgb(format='cv2')
-
-
-def image_from_map(map):
-    return imageutils.expand_channel((map * 255).astype(np.uint8))
-
-
-def normalize_and_render_map(map):
-    min_value = map.min()
-    max_value = map.max()
-
-    normalized_map = (map - min_value) / (max_value - min_value)
-    return image_from_map(normalized_map)
 
 
 def transform_bounding_box_bv(bbox, img_size, x_range, y_range):
@@ -117,6 +106,7 @@ view_transformation.add_transformation(T_velo_cam)
 view_transformation.add_transformation(R_rect)
 view_transformation.add_transformation(P_rect)
 
+inv_view_transformation = view_transformation.inverse()
 
 start_time = time.time()
 bv_w,bv_h = 512,512

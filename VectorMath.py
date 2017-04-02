@@ -50,6 +50,12 @@ class Transformation(object):
         self.add_transformation(matrix_rotation_z(phi))
 
 
+    def invert(self):
+        result = Transformation()
+        result.m  = self.m.inverse()
+        return result
+
+
 
 def matrix_identity():
     m = np.zeros((4,4), np.float32)
