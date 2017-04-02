@@ -125,10 +125,11 @@ src_x_range = [-25.6, 25.6]
 z_min = -1.5
 y_min = 3.2
 src_y_range = [y_min, y_min + 51.2]
+src_z_range = [-1.74, 0.0]
 
 for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
     progress_bar(i, len(data.velo))
-    bv_intensity, bv_density, bv_height = create_birds_eye_view(velo, src_x_range, src_y_range, [bv_w,bv_h])
+    bv_intensity, bv_density, bv_height = create_birds_eye_view(velo, src_x_range, src_y_range, src_z_range, [bv_w,bv_h])
     fv_intensity, fv_distance, fv_height = create_front_view(velo, [fv_w,fv_h], -1.5, 1.0, 0.08, 0.2)
     img = np.array(stereo_pair.right)
     draw_bounding_boxes_image(img, tracklets, i, view_transformation)

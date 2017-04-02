@@ -80,7 +80,8 @@ void _create_birds_eye_view(
   PyObject* apPointCloud,
   PyObject* apFeatureMap,
   PyObject* apSrcXRange,
-  PyObject* apSrcYRange)
+  PyObject* apSrcYRange,
+  PyObject* apSrcZRange)
 {
   const size_t kPointSize = 4;
   const auto kPointCloudShape = get_shape(apPointCloud);
@@ -104,6 +105,9 @@ void _create_birds_eye_view(
 
   const auto kSrcXRange = unpack_range(apSrcXRange);
   const auto kSrcYRange = unpack_range(apSrcYRange);
+  const auto kSrcZRange = unpack_range(apSrcZRange);
+  const float kZMin = kSrcZRange.first;
+  const float kZMax = kSrcZRange.second;
 
   const float kDeltaX = (kSrcXRange.second - kSrcXRange.first) / w;
   const float kDeltaY = (kSrcYRange.second - kSrcYRange.first) / h;
@@ -115,6 +119,16 @@ void _create_birds_eye_view(
     const float y = pPoint[1];
     const float z = pPoint[2];
     const float r = pPoint[3];
+
+    if (z > kZMax)
+    {
+      continue;
+    }
+    else if (z < kZMin)
+    {
+      continue;
+    }
+
     const int kOffset = calc_offset_bv(x,y, kSrcXRange, kSrcYRange, kDeltaX, kDeltaY, w, h);
 
     if (kOffset > -1)
