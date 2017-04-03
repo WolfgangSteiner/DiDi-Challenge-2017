@@ -62,6 +62,13 @@ def scale_img(img, factor):
         return img
 
 
+def flip_img_y(img):
+    if len(img.shape) == 2:
+        return img[::-1,:]
+    else:
+        return img[::-1,:,:]
+
+
 def show_img(img, title=""):
     cv2.imshow(title, img)
     cv2.waitKey()
