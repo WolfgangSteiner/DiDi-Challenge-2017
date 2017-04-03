@@ -1,5 +1,7 @@
 import imageutils
 import numpy as np
+import drawing
+from VectorMath import Transformation
 
 def image_from_map(map):
     return imageutils.expand_channel((map * 255).astype(np.uint8))
@@ -11,3 +13,43 @@ def normalize_and_render_map(map):
 
     normalized_map = (map - min_value) / (max_value - min_value)
     return image_from_map(normalized_map)
+
+
+def transformation_bounding_box_bv(img_size, x_range, y_range):
+    w,h = img_size
+    x1,x2 = x_range
+    y1,y2 = y_range
+    factor = w / (x2 - x1)
+    t = Transformation()
+    t.flip_xy()
+    t.mirror_xy()
+    t.translate(-x1,0,0)
+    t.scale(factor)
+    t.translate(0,h,0)
+    return t
+
+
+def draw_bounding_box_bv(image, bbox):
+    color = (255,0,0)
+    drawing.draw_line(image, bbox[0,0:2], bbox[1,0:2], color)
+    drawing.draw_line(image, bbox[1,0:2], bbox[2,0:2], color)
+    drawing.draw_line(image, bbox[2,0:2], bbox[3,0:2], color)
+    drawing.draw_line(image, bbox[3,0:2], bbox[0,0:2], color)
+
+
+def draw_bounding_box_image(image, bbox):
+    color = (0,0,255)
+    drawing.draw_line(image, bbox[0,0:2], bbox[1,0:2], color)
+    drawing.draw_line(image, bbox[1,0:2], bbox[2,0:2], color)
+    drawing.draw_line(image, bbox[2,0:2], bbox[3,0:2], color)
+    drawing.draw_line(image, bbox[3,0:2], bbox[0,0:2], color)
+
+    drawing.draw_line(image, bbox[4,0:2], bbox[5,0:2], color)
+    drawing.draw_line(image, bbox[5,0:2], bbox[6,0:2], color)
+    drawing.draw_line(image, bbox[6,0:2], bbox[7,0:2], color)
+    drawing.draw_line(image, bbox[7,0:2], bbox[4,0:2], color)
+
+    drawing.draw_line(image, bbox[0,0:2], bbox[4,0:2], color)
+    drawing.draw_line(image, bbox[1,0:2], bbox[5,0:2], color)
+    drawing.draw_line(image, bbox[2,0:2], bbox[6,0:2], color)
+    drawing.draw_line(image, bbox[3,0:2], bbox[7,0:2], color)

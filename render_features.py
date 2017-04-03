@@ -11,7 +11,7 @@ import time
 from Tracklet import parse_tracklets, bounding_boxes_for_frame
 from VectorMath import *
 import Calibration
-from renderutils import image_from_map, normalize_and_render_map
+import renderutils
 
 # The range argument is optional - default is None, which loads the whole dataset
 
@@ -28,52 +28,39 @@ data.load_velo()
 data.load_rgb(format='cv2')
 
 
+frames = []
+tracklets = parse_tracklets("%s/%s/%s_drive_%04d_sync/tracklet_labels.xml" %(args.basedir, args.date, args.date, args.drive))
+T_velo_cam = Calibration.read_calibration_matrix_velo_to_cam("%s/%s/calib_velo_to_cam.txt" % (args.basedir, args.date))
+
+cam_to_cam_file = "%s/%s/calib_cam_to_cam.txt" % (args.basedir, args.date)
+P_rect = Calibration.read_calibration_matrix(cam_to_cam_file, "P_rect_03", 3, 4)
+R_rect = Calibration.read_calibration_matrix(cam_to_cam_file, "R_rect_00", 3, 3)
+
+view_transformation = Transformation()
+view_transformation.add_transformation(T_velo_cam)
+view_transformation.add_transformation(R_rect)
+view_transformation.add_transformation(P_rect)
+
+start_time = time.time()
+bv_w,bv_h = 512,512
+fv_w,fv_h = 512,64
+src_x_range = [-25.6, 25.6]
+z_min = -1.5
+y_min = 0.0
+src_y_range = [y_min, y_min + 51.2]
+src_z_range = [-1.74, 0.0]
+
+
 def transform_bounding_box_bv(bbox, img_size, x_range, y_range):
-    w,h = img_size
-    x1,x2 = x_range
-    y1,y2 = y_range
-    factor = w / (x2 - x1)
-    t = Transformation()
-    t.flip_xy()
-    t.mirror_xy()
-    t.translate(-x1,0,0)
-    t.scale(factor)
-    t.translate(0,h,0)
+    t = renderutils.transformation_bounding_box_bv(img_size, x_range, y_range)
     return t.transform(bbox)
-
-
-def draw_bounding_box_bv(image, bbox):
-    color = (255,0,0)
-    drawing.draw_line(image, bbox[0,0:2], bbox[1,0:2], color)
-    drawing.draw_line(image, bbox[1,0:2], bbox[2,0:2], color)
-    drawing.draw_line(image, bbox[2,0:2], bbox[3,0:2], color)
-    drawing.draw_line(image, bbox[3,0:2], bbox[0,0:2], color)
-
-
-def draw_bounding_box_image(image, bbox):
-    color = (0,0,255)
-    drawing.draw_line(image, bbox[0,0:2], bbox[1,0:2], color)
-    drawing.draw_line(image, bbox[1,0:2], bbox[2,0:2], color)
-    drawing.draw_line(image, bbox[2,0:2], bbox[3,0:2], color)
-    drawing.draw_line(image, bbox[3,0:2], bbox[0,0:2], color)
-
-    drawing.draw_line(image, bbox[4,0:2], bbox[5,0:2], color)
-    drawing.draw_line(image, bbox[5,0:2], bbox[6,0:2], color)
-    drawing.draw_line(image, bbox[6,0:2], bbox[7,0:2], color)
-    drawing.draw_line(image, bbox[7,0:2], bbox[4,0:2], color)
-
-    drawing.draw_line(image, bbox[0,0:2], bbox[4,0:2], color)
-    drawing.draw_line(image, bbox[1,0:2], bbox[5,0:2], color)
-    drawing.draw_line(image, bbox[2,0:2], bbox[6,0:2], color)
-    drawing.draw_line(image, bbox[3,0:2], bbox[7,0:2], color)
-
 
 
 def draw_bounding_boxes_bv(image, tracklets, frame_idx, x_range, y_range):
     img_size = imageutils.img_size(image)
     for bbox in bounding_boxes_for_frame(tracklets, frame_idx):
         bbox = transform_bounding_box_bv(bbox, img_size, x_range, y_range)
-        draw_bounding_box_bv(image, bbox)
+        renderutils.draw_bounding_box_bv(image, bbox)
 
 
 def project_bbox(bbox):
@@ -89,33 +76,8 @@ def project_bbox(bbox):
 def draw_bounding_boxes_image(image, tracklets, frame_idx, transformation):
     for bbox in bounding_boxes_for_frame(tracklets, frame_idx):
         bbox = transformation.transform(bbox)
-        draw_bounding_box_image(image, project_bbox(bbox))
+        renderutils.draw_bounding_box_image(image, project_bbox(bbox))
 
-
-
-frames = []
-tracklets = parse_tracklets("%s/%s/%s_drive_%04d_sync/tracklet_labels.xml" %(args.basedir, args.date, args.date, args.drive))
-T_velo_cam = Calibration.read_calibration_matrix_velo_to_cam("%s/%s/calib_velo_to_cam.txt" % (args.basedir, args.date))
-
-cam_to_cam_file = "%s/%s/calib_cam_to_cam.txt" % (args.basedir, args.date)
-P_rect = Calibration.read_calibration_matrix(cam_to_cam_file, "P_rect_03", 3, 4)
-R_rect = Calibration.read_calibration_matrix(cam_to_cam_file, "R_rect_00", 3, 3)
-
-view_transformation = Transformation()
-view_transformation.add_transformation(T_velo_cam)
-view_transformation.add_transformation(R_rect)
-view_transformation.add_transformation(P_rect)
-
-inv_view_transformation = view_transformation.inverse()
-
-start_time = time.time()
-bv_w,bv_h = 512,512
-fv_w,fv_h = 512,64
-src_x_range = [-25.6, 25.6]
-z_min = -1.5
-y_min = 3.2
-src_y_range = [y_min, y_min + 51.2]
-src_z_range = [-1.74, 0.0]
 
 for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
     progress_bar(i, len(data.velo))
@@ -135,13 +97,13 @@ for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
     im_offset = (frame_width - im_width) // 2
     imageutils.paste_img(frame, imageutils.bgr2rgb(img), [im_offset, 0])
 
-    bv_intensity = image_from_map(bv_intensity)
+    bv_intensity = renderutils.image_from_map(bv_intensity)
     draw_bounding_boxes_bv(bv_intensity, tracklets, i, src_x_range, src_y_range)
 
-    bv_density = image_from_map(bv_density)
+    bv_density = renderutils.image_from_map(bv_density)
     draw_bounding_boxes_bv(bv_density, tracklets, i, src_x_range, src_y_range)
 
-    bv_height = image_from_map(bv_height)
+    bv_height = renderutils.image_from_map(bv_height)
     draw_bounding_boxes_bv(bv_height, tracklets, i, src_x_range, src_y_range)
 
 
@@ -151,9 +113,9 @@ for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
     imageutils.paste_img(frame, bv_height, [2*bv_w,y])
 
     y += bv_h + text_height
-    imageutils.paste_img(frame, image_from_map(fv_intensity), [0,y])
-    imageutils.paste_img(frame, normalize_and_render_map(fv_distance), [fv_w,y])
-    imageutils.paste_img(frame, normalize_and_render_map(fv_height), [2*fv_w,y])
+    imageutils.paste_img(frame, renderutils.image_from_map(fv_intensity), [0,y])
+    imageutils.paste_img(frame, renderutils.normalize_and_render_map(fv_distance), [fv_w,y])
+    imageutils.paste_img(frame, renderutils.normalize_and_render_map(fv_height), [2*fv_w,y])
 
 
     tr = drawing.TextRenderer(frame)
