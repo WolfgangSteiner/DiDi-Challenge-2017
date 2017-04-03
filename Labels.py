@@ -3,7 +3,7 @@ from collections import namedtuple
 
 Label = namedtuple("Label", "type,truncated,occluded,alpha,bbox,dimensions,location,rotation_y")
 
-def read_labels(file_name):
+def read_labels(file_name, types=("Car","Van")):
     result = []
     with open(file_name) as f:
         for l in f.readlines():
@@ -16,7 +16,7 @@ def read_labels(file_name):
             dimensions = np.array(arr[8:11], np.float32)
             location = np.array(arr[11:14], np.float32)
             rotation_y = float(arr[14])
-            if type in ("Car", "Van"):
+            if type in types:
                 result.append(Label(type, truncated, occluded, alpha, bbox, dimensions, location, rotation_y))
 
     return result
