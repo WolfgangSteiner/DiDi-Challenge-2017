@@ -52,7 +52,7 @@ src_z_range = [-1.74, 0.0]
 
 
 def transform_bounding_box_bv(bbox, img_size, x_range, y_range):
-    t = renderutils.transformation_bounding_box_bv(img_size, x_range, y_range)
+    t = renderutils.transformation_velo_to_bv(img_size, x_range, y_range)
     return t.transform(bbox)
 
 
@@ -108,9 +108,9 @@ for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
 
 
     y = im_height + text_height
-    imageutils.paste_img(frame, bv_intensity, [0,y])
-    imageutils.paste_img(frame, bv_density, [bv_w,y])
-    imageutils.paste_img(frame, bv_height, [2*bv_w,y])
+    imageutils.paste_img(frame, imageutils.flip_img_y(bv_intensity), [0,y])
+    imageutils.paste_img(frame, imageutils.flip_img_y(bv_density), [bv_w,y])
+    imageutils.paste_img(frame, imageutils.flip_img_y(bv_height), [2*bv_w,y])
 
     y += bv_h + text_height
     imageutils.paste_img(frame, renderutils.image_from_map(fv_intensity), [0,y])

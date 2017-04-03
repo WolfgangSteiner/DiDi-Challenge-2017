@@ -56,19 +56,17 @@ int calc_offset_bv(
   float x, float y,
   const std::pair<float,float>& aXRange, const std::pair<float,float>& aYRange,
   float aDeltaX, float aDeltaY,
-  int aWidth, int aHeight)
+  int aWidth)
 {
-  if (x < aYRange.first || x >= aYRange.second || y < aXRange.first || y >=aXRange.second)
+  if (x < aXRange.first || x >= aXRange.second || y < aYRange.first || y >=aYRange.second
+      || std::abs(x) > y)
   {
     return -1;
   }
   else
   {
-    const int px = aWidth - 1 - int((y - aXRange.first) / aDeltaX);
-    const int py = aHeight - 1 - int(x / aDeltaY);
-
-//    px = std::max(0, std::min(px, aWidth - 1));
-//    py = std::max(0, std::min(py, aHeight - 1));
+    const int px = (x - aXRange.first) / aDeltaX;
+    const int py = (y - aYRange.first) / aDeltaY;
 
     return py * aWidth + px;
   }
@@ -115,21 +113,17 @@ void _create_birds_eye_view(
   for (int i = 0; i < kNumLidarPoints; ++i)
   {
     const float* pPoint = &pPointData[i * kPointSize];
-    const float x = pPoint[0];
-    const float y = pPoint[1];
+    const float x = -pPoint[1];
+    const float y = pPoint[0];
     const float z = pPoint[2];
     const float r = pPoint[3];
 
-    if (z > kZMax)
-    {
-      continue;
-    }
-    else if (z < kZMin)
+    if (z > kZMax || z < kZMin)
     {
       continue;
     }
 
-    const int kOffset = calc_offset_bv(x,y, kSrcXRange, kSrcYRange, kDeltaX, kDeltaY, w, h);
+    const int kOffset = calc_offset_bv(x,y, kSrcXRange, kSrcYRange, kDeltaX, kDeltaY, w);
 
     if (kOffset > -1)
     {

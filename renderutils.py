@@ -15,17 +15,16 @@ def normalize_and_render_map(map):
     return image_from_map(normalized_map)
 
 
-def transformation_bounding_box_bv(img_size, x_range, y_range):
+def transformation_velo_to_bv(img_size, x_range, y_range):
     w,h = img_size
     x1,x2 = x_range
     y1,y2 = y_range
     factor = w / (x2 - x1)
     t = Transformation()
     t.flip_xy()
-    t.mirror_xy()
+    t.mirror_x()
     t.translate(-x1,0,0)
     t.scale(factor)
-    t.translate(0,h,0)
     return t
 
 
