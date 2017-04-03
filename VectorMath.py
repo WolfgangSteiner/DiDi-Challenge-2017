@@ -21,6 +21,10 @@ class Transformation(object):
         self.add_transformation(matrix_flip_xy())
 
 
+    def flip_yz(self):
+        self.add_transformation(matrix_flip_yz())
+
+
     def mirror_x(self):
         self.add_transformation(matrix_mirror_x())
 
@@ -52,7 +56,7 @@ class Transformation(object):
 
     def invert(self):
         result = Transformation()
-        result.m  = self.m.inverse()
+        result.m  = np.linalg.inv(self.m)
         return result
 
 
@@ -102,6 +106,15 @@ def matrix_flip_xy():
     m[0,1] = 1.0
     m[1,0] = 1.0
     m[2,2] = 1.0
+    m[3,3] = 1.0
+    return m
+
+
+def matrix_flip_yz():
+    m = matrix_zero()
+    m[0,0] = 1.0
+    m[1,2] = 1.0
+    m[2,1] = 1.0
     m[3,3] = 1.0
     return m
 

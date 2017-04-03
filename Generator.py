@@ -9,11 +9,16 @@ import cv2
 import imageutils
 import renderutils
 from cv2grid import CV2Grid
+import Labels
+
+
+def get_stem(path):
+    return os.path.splitext(os.path.split(path)[1])[0]
 
 
 def get_file_stems(category="training"):
     file_names = glob.glob("kitti/%s/velodyne/*.bin" % category)
-    return [os.path.splitext(f)[0] for f in file_names]
+    return [get_stem(f) for f in file_names]
 
 
 def split_test_set(file_stems, validation_cut=0.2, seed=None):
@@ -24,13 +29,46 @@ def split_test_set(file_stems, validation_cut=0.2, seed=None):
     return shuffled_stems[0:num_test], shuffled_stems[num_test:]
 
 
-def read_velodyne_data(stem):
-    velo = np.fromfile(stem + ".bin", dtype=np.float32)
+def read_velodyne_data(stem, category="training"):
+    path = "kitti/%s/velodyne/%s.bin" % (category, stem)
+    velo = np.fromfile(path, dtype=np.float32)
     velo = velo.reshape((-1, 4))
     return velo
 
 
-def Generator(file_stems, batchsize=32):
+def read_labels(stem, category="training"):
+    path = "kitti/%s/label_2/%s.txt" % (category, stem)
+    return Labels.read_labels(path)
+
+
+def read_transforms(stem, category="training"):
+    path = "kitti/%s/calib/%s.txt" % (category, stem)
+    P2 = Calibration.read_calibration_matrix(path, "P2", 3, 4)
+    R0_rect = Calibration.read_calibration_matrix(path, "R0_rect", 3, 3)
+    Tr_velo_to_cam = Calibration.read_calibration_matrix(path, "Tr_velo_to_cam", 3, 4)
+    t = VectorMath.Transformation()
+    t.add_transformation(Tr_velo_to_cam)
+    #t.add_transformation(R0_rect)
+    #t.add_transformation(P2)
+    return t.invert()
+
+
+def bounding_box_for_label(label):
+    h,w,l = label.dimensions
+    bbox = np.zeros((8,4))
+    bbox[0] = [-l/2,  0, -w/2, 1.0]
+    bbox[1] = [ l/2,  0, -w/2, 1.0]
+    bbox[2] = [ l/2,  0,  w/2, 1.0]
+    bbox[3] = [-l/2,  0,  w/2, 1.0]
+    bbox[4:8,:] = bbox[0:4,:] + [0.0, h, 0.0, 0.0]
+    t = VectorMath.Transformation()
+    t.rotate_y(label.rotation_y)
+    t.translate(label.location)
+    #t.flip_yz()
+    return t.transform(bbox)
+
+
+def Generator(file_stems, category="training", batchsize=32, draw_ground_truth=False):
     idx = 0
     num_examples = len(file_stems)
     bv_size = [512,512]
@@ -38,18 +76,34 @@ def Generator(file_stems, batchsize=32):
     y_min = 0.0
     src_y_range = [y_min, y_min + 51.2]
     src_z_range = [-10.0, 10.0]
-    labels_path =
+    T_velo_to_bv = renderutils.transformation_velo_to_bv(bv_size, src_x_range, src_y_range)
 
     while True:
         X = []
+        y = []
+        images = []
         for i in range(batchsize):
             idx = (idx + 1) % num_examples
             stem = file_stems[idx]
-            velo = read_velodyne_data(stem)
+            velo = read_velodyne_data(stem, category)
+            labels = read_labels(stem, category)
+            T = read_transforms(stem, category)
+            T.add_transformation(T_velo_to_bv)
+            bv = create_birds_eye_view(velo, src_x_range, src_y_range, src_z_range, bv_size)
+            img_bv = np.stack((bv*255),axis=2).astype(np.uint8)
+
+            for l in labels:
+                bbox = bounding_box_for_label(l)
+                bbox = T.transform(bbox)
+                renderutils.draw_bounding_box_bv(img_bv, bbox)
+
+            images.append(img_bv)
             X.append(create_birds_eye_view(velo, src_x_range, src_y_range, src_z_range, bv_size))
 
+
         X = np.stack(X, axis=0)
-        yield X
+        #y = np.stack(y, axis=0)
+        yield X, y, images
 
 
 if __name__ == "__main__":
@@ -61,13 +115,13 @@ if __name__ == "__main__":
     grid = np.array([3,2])
     img_size = grid * 512
     g = CV2Grid(img_size, grid)
-    X = gen.next()
+    X,y,images = gen.next()
     print(X.shape)
 
     for i in range(X.shape[0]):
         row = i // num_cols
         col = i % num_cols
-        img = renderutils.image_from_map(X[i,1])
-        g.paste_img(img, (row,col))
+        img = images[i]
+        g.paste_img(imageutils.flip_img_y(img), (row,col))
 
     g.save("overview.png")
