@@ -4,6 +4,9 @@ python2 setup.py build
 sudo python2 setup.py install
 ```
 
+# Dependencies
+* boost-python
+
 # Usage
 ```
 from MV3DFeatures import create_birds_eye_view
