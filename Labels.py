@@ -22,7 +22,6 @@ def read_labels(file_name, types=("Car","Van")):
     return result
 
 
-
 if __name__ == "__main__":
     labels = read_labels("kitti/training/label_2/002777.txt")
     print(labels)

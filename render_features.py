@@ -92,10 +92,10 @@ for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
     text_offset = 10
     frame_width = max(im_width, 3*bv_w, 3*fv_w)
     frame_height = im_height + bv_h + fv_h + 2 * text_height
-    frame = np.zeros((frame_height,frame_width,3))
+    frame = imageutils.new_img((frame_width,frame_height))
 
     im_offset = (frame_width - im_width) // 2
-    imageutils.paste_img(frame, imageutils.bgr2rgb(img), [im_offset, 0])
+    imageutils.paste_img(frame, np.array(img), [im_offset, 0])
 
     bv_intensity = renderutils.image_from_map(bv_intensity)
     draw_bounding_boxes_bv(bv_intensity, tracklets, i, src_x_range, src_y_range)
@@ -130,7 +130,7 @@ for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
         tr.text_at(s, (x,y), horizontal_align="center")
 
 
-    frames.append(frame)
+    frames.append(imageutils.bgr2rgb(frame))
 
 total_time = time.time() - start_time
 time_per_frame = total_time / len(frames)

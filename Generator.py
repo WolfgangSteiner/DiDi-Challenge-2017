@@ -57,14 +57,13 @@ def bounding_box_for_label(label):
     h,w,l = label.dimensions
     bbox = np.zeros((8,4))
     bbox[0] = [-l/2,  0, -w/2, 1.0]
-    bbox[1] = [ l/2,  0, -w/2, 1.0]
-    bbox[2] = [ l/2,  0,  w/2, 1.0]
-    bbox[3] = [-l/2,  0,  w/2, 1.0]
-    bbox[4:8,:] = bbox[0:4,:] + [0.0, h, 0.0, 0.0]
+    bbox[1] = [-l/2,  0,  w/2, 1.0]
+    bbox[2] = [-l/2,  h,  w/2, 1.0]
+    bbox[3] = [-l/2,  h, -w/2, 1.0]
+    bbox[4:8,:] = bbox[0:4,:] + [l, 0.0, 0.0, 0.0]
     t = VectorMath.Transformation()
-    t.rotate_y(label.rotation_y)
+    t.rotate_y(-label.rotation_y)
     t.translate(label.location)
-    #t.flip_yz()
     return t.transform(bbox)
 
 
