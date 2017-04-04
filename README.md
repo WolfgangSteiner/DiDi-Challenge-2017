@@ -16,6 +16,7 @@
 
 
 ## Dependencies
+* python2 (because ros-indigo is python2 :( )
 * pykitti
 * opencv3
 * numpy
