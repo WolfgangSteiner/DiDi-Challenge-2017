@@ -55,7 +55,13 @@ def read_transforms(stem, category="training"):
     return t.invert()
 
 
-def Generator(file_stems, category="training", batchsize=32, draw_ground_truth=False):
+def Generator(
+        file_stems,
+        category="training",
+        batch_size=32,
+        draw_ground_truth=False,
+        augment_data=True):
+
     idx = 0
     num_examples = len(file_stems)
     bv_size = [512,512]
@@ -102,7 +108,6 @@ def Generator(file_stems, category="training", batchsize=32, draw_ground_truth=F
 
         if draw_ground_truth:
             yield X, y, images
-
         else:
             yield X,y
 
