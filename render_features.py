@@ -8,7 +8,7 @@ from MV3DFeatures import create_birds_eye_view, create_front_view
 from Utils import progress_bar
 import drawing
 import time
-from Tracklet import parse_tracklets, bounding_boxes_for_frame
+from KittiTracklet import parse_tracklets, bounding_boxes_for_frame
 from VectorMath import *
 import Calibration
 import renderutils
@@ -81,8 +81,15 @@ def draw_bounding_boxes_image(image, tracklets, frame_idx, transformation):
 
 for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
     progress_bar(i, len(data.velo))
-    bv_intensity, bv_density, bv_height = create_birds_eye_view(velo, src_x_range, src_y_range, src_z_range, [bv_w,bv_h])
-    fv_intensity, fv_distance, fv_height = create_front_view(velo, [fv_w,fv_h], -1.5, 1.0, 0.08, 0.2)
+    lidar_bv = create_birds_eye_view(velo, src_x_range, src_y_range, src_z_range, [bv_w,bv_h])
+    bv_intensity = lidar_bv[:,:,0]
+    bv_density = lidar_bv[:,:,1]
+    bv_height = lidar_bv[:,:,2]
+
+    lidar_fv = create_front_view(velo, [fv_w,fv_h], -1.5, 1.0, 0.08, 0.2)
+    fv_intensity = lidar_fv[:,:,0]
+    fv_distance = lidar_fv[:,:,1]
+    fv_height = lidar_fv[:,:,2]
     img = np.array(stereo_pair.right)
     draw_bounding_boxes_image(img, tracklets, i, view_transformation)
 
