@@ -11,6 +11,7 @@ import renderutils
 from cv2grid import CV2Grid
 import KittiLabel
 from Tracklet import Tracklet, bounding_box_for_tracklet
+from FeatureVectorEncoderLidarBV import FeatureVectorEncoderLidarBV
 
 
 def get_stem(path):
@@ -64,6 +65,11 @@ def Generator(file_stems, category="training", batchsize=32, draw_ground_truth=F
     src_z_range = [-10.0, 10.0]
     T_velo_to_bv = renderutils.transformation_velo_to_bv(bv_size, src_x_range, src_y_range)
 
+    # src_x_range, src_y_range are defined in bv coordinate system
+    # The resulting tracklets will be encoded in the lidar corrdinate system, thus
+    # the axes are swapped:
+    encoder = FeatureVectorEncoderLidarBV(src_y_range, src_x_range, [32,32])
+
     while True:
         X = []
         y = []
@@ -74,28 +80,37 @@ def Generator(file_stems, category="training", batchsize=32, draw_ground_truth=F
             velo = read_velodyne_data(stem, category)
             labels = read_labels(stem, category)
             T_cam_to_velo = read_transforms(stem, category)
-            bv = create_birds_eye_view(velo, src_x_range, src_y_range, src_z_range, bv_size)
-            img_bv = np.stack((bv*255),axis=2).astype(np.uint8)
 
-            for l in labels:
-                tracklet = KittiLabel.tracklet_for_label(l, T_cam_to_velo)
-                bbox = bounding_box_for_tracklet(tracklet)
-                bbox = T_velo_to_bv.transform(bbox)
-                renderutils.draw_bounding_box_bv(img_bv, bbox)
+            tracklets = [KittiLabel.tracklet_for_label(l, T_cam_to_velo) for l in labels]
 
-            images.append(img_bv)
+            if draw_ground_truth:
+                bv = create_birds_eye_view(velo, src_x_range, src_y_range, src_z_range, bv_size)
+                img_bv = np.stack((bv*255),axis=2).astype(np.uint8)
+
+                for t in tracklets:
+                    bbox = bounding_box_for_tracklet(t)
+                    bbox = T_velo_to_bv.transform(bbox)
+                    renderutils.draw_bounding_box_bv(img_bv, bbox)
+
+                images.append(img_bv)
+
             X.append(create_birds_eye_view(velo, src_x_range, src_y_range, src_z_range, bv_size))
-
+            y.append(encoder.encode_tracklets(tracklets))
 
         X = np.stack(X, axis=0)
-        #y = np.stack(y, axis=0)
-        yield X, y, images
+        y = np.stack(y, axis=0)
+
+        if draw_ground_truth:
+            yield X, y, images
+
+        else:
+            yield X,y
 
 
 if __name__ == "__main__":
     stems = get_file_stems()
     X_in_test, X_in_val = split_test_set(stems, seed=42)
-    gen = Generator(X_in_test, batchsize=6)
+    gen = Generator(X_in_test, batchsize=6, draw_ground_truth=True)
     num_rows = 2
     num_cols = 3
     grid = np.array([3,2])
