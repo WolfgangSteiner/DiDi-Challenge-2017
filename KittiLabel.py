@@ -1,5 +1,8 @@
 import numpy as np
 from collections import namedtuple
+import VectorMath
+from Tracklet import Tracklet
+import math
 
 Label = namedtuple("Label", "type,truncated,occluded,alpha,bbox,dimensions,location,rotation_y")
 
@@ -20,6 +23,15 @@ def read_labels(file_name, types=("Car","Van")):
                 result.append(Label(type, truncated, occluded, alpha, bbox, dimensions, location, rotation_y))
 
     return result
+
+
+def tracklet_for_label(label, t_cam_to_velo):
+    rotation_z = label.rotation_y + math.pi / 2
+    px,py,pz = label.location
+    h,w,l = label.dimensions
+    position = t_cam_to_velo.transform(np.array([px,py,pz,1.0]))
+    size = t_cam_to_velo.transform(np.array([w,h,l,0.0]))
+    return Tracklet(position[0:3],size[0:3],rotation_z)
 
 
 if __name__ == "__main__":

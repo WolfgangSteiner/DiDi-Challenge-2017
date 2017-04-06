@@ -9,7 +9,8 @@ import cv2
 import imageutils
 import renderutils
 from cv2grid import CV2Grid
-import Labels
+import KittiLabel
+from Tracklet import Tracklet, bounding_box_for_tracklet
 
 
 def get_stem(path):
@@ -38,7 +39,7 @@ def read_velodyne_data(stem, category="training"):
 
 def read_labels(stem, category="training"):
     path = "kitti/%s/label_2/%s.txt" % (category, stem)
-    return Labels.read_labels(path)
+    return KittiLabel.read_labels(path)
 
 
 def read_transforms(stem, category="training"):
@@ -51,20 +52,6 @@ def read_transforms(stem, category="training"):
     #t.add_transformation(R0_rect)
     #t.add_transformation(P2)
     return t.invert()
-
-
-def bounding_box_for_label(label):
-    h,w,l = label.dimensions
-    bbox = np.zeros((8,4))
-    bbox[0] = [-l/2,  0, -w/2, 1.0]
-    bbox[1] = [-l/2,  0,  w/2, 1.0]
-    bbox[2] = [-l/2,  h,  w/2, 1.0]
-    bbox[3] = [-l/2,  h, -w/2, 1.0]
-    bbox[4:8,:] = bbox[0:4,:] + [l, 0.0, 0.0, 0.0]
-    t = VectorMath.Transformation()
-    t.rotate_y(-label.rotation_y)
-    t.translate(label.location)
-    return t.transform(bbox)
 
 
 def Generator(file_stems, category="training", batchsize=32, draw_ground_truth=False):
@@ -86,14 +73,14 @@ def Generator(file_stems, category="training", batchsize=32, draw_ground_truth=F
             stem = file_stems[idx]
             velo = read_velodyne_data(stem, category)
             labels = read_labels(stem, category)
-            T = read_transforms(stem, category)
-            T.add_transformation(T_velo_to_bv)
+            T_cam_to_velo = read_transforms(stem, category)
             bv = create_birds_eye_view(velo, src_x_range, src_y_range, src_z_range, bv_size)
             img_bv = np.stack((bv*255),axis=2).astype(np.uint8)
 
             for l in labels:
-                bbox = bounding_box_for_label(l)
-                bbox = T.transform(bbox)
+                tracklet = KittiLabel.tracklet_for_label(l, T_cam_to_velo)
+                bbox = bounding_box_for_tracklet(tracklet)
+                bbox = T_velo_to_bv.transform(bbox)
                 renderutils.draw_bounding_box_bv(img_bv, bbox)
 
             images.append(img_bv)
