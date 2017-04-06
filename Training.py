@@ -133,10 +133,15 @@ class Training(object):
         file_stems_train, file_stems_val = Generator.split_test_set(file_stems)
         generator_train = Generator.Generator(file_stems_train, batch_size=self.batch_size)
         generator_val = Generator.Generator(file_stems_val, batch_size=self.batch_size, augment_data=False)
+        X_val, y_val = generator_val.next()
 
         self.model.fit_generator(
-            generator_train, len(file_stems_train), num_epochs,
-            validation_data = generator_val,
-            nb_val_samples = len(file_stems_val),
+            generator_train,
+            len(file_stems_train) / self.batch_size,
+            epochs = num_epochs,
+            validation_data = (X_val,y_val),
+            #validation_steps = len(file_stems_val) / self.batch_size,
             callbacks = self.callbacks(options),
-            max_q_size=8, nb_worker=8, pickle_safe=True)  # starts training
+            max_q_size=8,
+            workers=1,
+            pickle_safe=True)  # starts training

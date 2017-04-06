@@ -80,19 +80,19 @@ def Generator(
         X = []
         y = []
         images = []
-        for i in range(batchsize):
+        for i in range(batch_size):
             idx = (idx + 1) % num_examples
             stem = file_stems[idx]
             velo = read_velodyne_data(stem, category)
             labels = read_labels(stem, category)
             T_cam_to_velo = read_transforms(stem, category)
-
+            lidar_bv = create_birds_eye_view(velo, src_x_range, src_y_range, src_z_range, bv_size)
+            X.append(lidar_bv)
             tracklets = [KittiLabel.tracklet_for_label(l, T_cam_to_velo) for l in labels]
+            y.append(encoder.encode_tracklets(tracklets))
 
             if draw_ground_truth:
-                bv = create_birds_eye_view(velo, src_x_range, src_y_range, src_z_range, bv_size)
-                img_bv = np.stack((bv*255),axis=2).astype(np.uint8)
-
+                img_bv = (lidar_bv*255).astype(np.uint8)
                 for t in tracklets:
                     bbox = bounding_box_for_tracklet(t)
                     bbox = T_velo_to_bv.transform(bbox)
@@ -100,8 +100,6 @@ def Generator(
 
                 images.append(img_bv)
 
-            X.append(create_birds_eye_view(velo, src_x_range, src_y_range, src_z_range, bv_size))
-            y.append(encoder.encode_tracklets(tracklets))
 
         X = np.stack(X, axis=0)
         y = np.stack(y, axis=0)
@@ -109,22 +107,23 @@ def Generator(
         if draw_ground_truth:
             yield X, y, images
         else:
-            yield X,y
+            yield X, y
+
 
 
 if __name__ == "__main__":
     stems = get_file_stems()
     X_in_test, X_in_val = split_test_set(stems, seed=42)
-    gen = Generator(X_in_test, batchsize=6, draw_ground_truth=True)
+    gen = Generator(X_in_test, batch_size=6, draw_ground_truth=True)
     num_rows = 2
     num_cols = 3
     grid = np.array([3,2])
     img_size = grid * 512
     g = CV2Grid(img_size, grid)
     X,y,images = gen.next()
-    print(X.shape)
+    print(X.shape, y.shape)
 
-    for i in range(X.shape[0]):
+    for i in range(6):
         row = i // num_cols
         col = i % num_cols
         img = images[i]

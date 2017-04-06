@@ -1,7 +1,5 @@
 from Tracklet import Tracklet
-from Labels import Label
 import numpy as np
-
 
 
 class FeatureVectorEncoderLidarBV(object):
@@ -49,4 +47,4 @@ class FeatureVectorEncoderLidarBV(object):
 
             result[iy,ix] = [1.0, px, py, l, w, h, t.rotation_z]
 
-        return result.reshape((self.ny*self.nx, self.num_features()))
+        return result.reshape((self.ny*self.nx*self.num_features(),))
