@@ -56,7 +56,8 @@ int calc_offset_bv(
   float x, float y,
   const std::pair<float,float>& aXRange, const std::pair<float,float>& aYRange,
   float aDeltaX, float aDeltaY,
-  int aWidth)
+  int aWidth,
+  int aNumFeatureMaps)
 {
   if (x < aXRange.first || x >= aXRange.second || y < aYRange.first || y >=aYRange.second
       || std::abs(x) > y)
@@ -68,7 +69,7 @@ int calc_offset_bv(
     const int px = (x - aXRange.first) / aDeltaX;
     const int py = (y - aYRange.first) / aDeltaY;
 
-    return py * aWidth + px;
+    return (py * aWidth + px) * aNumFeatureMaps;
   }
 }
 
@@ -90,16 +91,12 @@ void _create_birds_eye_view(
   const auto kFeatureMapShape = get_shape(apFeatureMap);
   float* pFeatureMapPtr = get_data(apFeatureMap);
   assert(kFeatureMapShape.size() == 3);
-  const int kNumFeatureMaps = kFeatureMapShape[0];
+  const int kNumFeatureMaps = kFeatureMapShape[2];
   assert(kNumFeatureMaps >= 3);
 
-  const int h = kFeatureMapShape[1];
-  const int w = kFeatureMapShape[2];
+  const int h = kFeatureMapShape[0];
+  const int w = kFeatureMapShape[1];
   const size_t kFeatureMapSize = w * h;
-
-  float* pIntensityMapPtr = pFeatureMapPtr;
-  float* pDensityMapPtr = pFeatureMapPtr + kFeatureMapSize;
-  float* pHeightMapPtr = pFeatureMapPtr + 2 * kFeatureMapSize;
 
   const auto kSrcXRange = unpack_range(apSrcXRange);
   const auto kSrcYRange = unpack_range(apSrcYRange);
@@ -123,16 +120,16 @@ void _create_birds_eye_view(
       continue;
     }
 
-    const int kOffset = calc_offset_bv(x,y, kSrcXRange, kSrcYRange, kDeltaX, kDeltaY, w);
+    const int kOffset = calc_offset_bv(x,y, kSrcXRange, kSrcYRange, kDeltaX, kDeltaY, w, kNumFeatureMaps);
 
     if (kOffset > -1)
     {
-      if (z > pHeightMapPtr[kOffset])
+      if (z > pFeatureMapPtr[kOffset + 2])
       {
-        pHeightMapPtr[kOffset] = z;
-	      pIntensityMapPtr[kOffset] = r;
+        pFeatureMapPtr[kOffset+2] = z; // height
+	      pFeatureMapPtr[kOffset] = r;  // intensity
       }
-      pDensityMapPtr[kOffset]++;
+      pFeatureMapPtr[kOffset+1]++;  // density
     }
   }
 }
