@@ -154,7 +154,8 @@ int calc_offset_fv(
   float z_min,
   float z_max,
   int aWidth,
-  int aHeight)
+  int aHeight,
+  int aNumFeatureMaps)
 {
   const float c = std::atan2(y, x) / aDeltaTheta;
   const float r = std::atan2(z - z_min, calc_distance(x,y)) / std::atan2(z_max - z_min, 10.0f);
@@ -168,7 +169,7 @@ int calc_offset_fv(
   }
   else
   {
-    return py * aWidth + px;
+    return (py * aWidth + px) * aNumFeatureMaps;
   }
 }
 
@@ -192,11 +193,11 @@ void _create_front_view(
   const auto kFeatureMapShape = get_shape(apFeatureMap);
   float* pFeatureMapPtr = get_data(apFeatureMap);
   assert(kFeatureMapShape.size() == 3);
-  const int kNumFeatureMaps = kFeatureMapShape[0];
-  assert(kNumFeatureMaps >= 3);
+  const int kNumFeatureMaps = kFeatureMapShape[2];
+  assert(kNumFeatureMaps == 3);
 
-  const int h = kFeatureMapShape[1];
-  const int w = kFeatureMapShape[2];
+  const int h = kFeatureMapShape[0];
+  const int w = kFeatureMapShape[1];
   const size_t kFeatureMapSize = w * h;
 
   float* pIntensityMapPtr = pFeatureMapPtr;
@@ -216,13 +217,13 @@ void _create_front_view(
     const float z = pPoint[2];
     const float r = pPoint[3];
 
-    const int kOffset = calc_offset_fv(x, y, z, kDeltaTheta, kDeltaPhi, kMinZ, kMaxZ, w, h);
+    const int kOffset = calc_offset_fv(x, y, z, kDeltaTheta, kDeltaPhi, kMinZ, kMaxZ, w, h, kNumFeatureMaps);
 
     if (kOffset >= 0)
     {
-      pIntensityMapPtr[kOffset] = r;
-      pDistanceMapPtr[kOffset] = calc_distance(x,y);
-      pHeightMapPtr[kOffset] = z;
+      pFeatureMapPtr[kOffset + 0] = r;  // Intensity
+      pFeatureMapPtr[kOffset + 1] = calc_distance(x,y);  // Distance
+      pFeatureMapPtr[kOffset + 2] = z;  // Height
     }
   }
 }
