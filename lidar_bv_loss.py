@@ -24,6 +24,18 @@ def smooth_L1_loss(y_true, y_pred):
     return tf.reduce_sum(l1_loss)
 
 
+def loc_loss(y_true, y_pred):
+    '''
+    Calculates the smooth l1 loss between the parameters of ground truth and prediction.
+    Only the entries of the tensor that belong to a positive sample are considered.
+    '''
+    residual = (y_true[:,:,1:] - y_pred[:,:,1:])
+    absolute_loss = tf.reduce_sum(tf.abs(residual), axis=-1) * y_true[:,:,0]
+    square_loss = tf.reduce_sum(0.5 * (residual)**2, axis=-1) * y_true[:,:,0]
+    l1_loss = tf.where(tf.less(absolute_loss, 1.0), square_loss, absolute_loss - 0.5)
+    return tf.reduce_sum(l1_loss)
+
+
 def log_loss(y_true, y_pred):
     '''
     Compute the softmax log loss.
@@ -58,7 +70,13 @@ def multitask_loss(y_true, y_pred):
     positives = tf.to_float(tf.reduce_max(y_true[:,:,0], axis=-1))
     n_positives = tf.reduce_sum(positives)
 
-    localization_loss = smooth_L1_loss(y_true[:,:,num_classes:], y_pred[:,:,num_classes:])
-    confidence_loss = log_loss(y_true[:,:,0], y_pred[:,:,0])
+    y_true_conf = y_true[:,0]
+    y_true_params = y_true[:,1:]
+    y_pred_conf = y_pred[:,0]
+    y_pred_params = y_pred[:,1:]
 
-    return 1.0 / tf.maximum(1.0, n_positives) * (confidence_loss + localization_loss)
+    conf_loss = smooth_L1_loss(y_true_conf, y_pred_conf)
+    #loc_loss = smooth_L1_loss(y_true_params, y_pred_params)
+    #confidence_loss = log_loss(y_true[:,:,0], y_pred[:,:,0])
+
+    return 1.0 / tf.maximum(1.0, n_positives) * (1000.0 * conf_loss + loc_loss(y_true, y_pred))
