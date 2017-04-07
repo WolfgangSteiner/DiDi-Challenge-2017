@@ -16,6 +16,7 @@ import random
 from keras.layers.core import SpatialDropout2D
 from sys import argv
 from lidar_bv_loss import multitask_loss
+import Utils
 
 
 def regularizer(wreg):
@@ -41,6 +42,7 @@ class Training(object):
         self.lr = 0.01
         self.model_checkpoint = ModelCheckpoint(self.output_file_stem + ".hdf5", monitor='val_loss', verbose=1, save_best_only=True, save_weights_only=False, mode='auto')
         self.csv_logger = CSVLogger(self.output_file_stem + ".log")
+        Utils.mkdir("models")
 
 
     def callbacks(self, options):
