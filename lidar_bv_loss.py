@@ -21,7 +21,7 @@ def smooth_L1_loss(y_true, y_pred):
     absolute_loss = tf.abs(y_true - y_pred)
     square_loss = 0.5 * (y_true - y_pred)**2
     l1_loss = tf.where(tf.less(absolute_loss, 1.0), square_loss, absolute_loss - 0.5)
-    return tf.reduce_sum(l1_loss, axis=-1)
+    return tf.reduce_sum(l1_loss)
 
 
 def log_loss(y_true, y_pred):
@@ -43,7 +43,7 @@ def log_loss(y_true, y_pred):
     # Make sure that `y_pred` doesn't contain any zeros (which would break the log function)
     y_pred = tf.maximum(y_pred, 1e-15)
     # Compute the log loss
-    log_loss = -tf.reduce_sum(y_true * tf.log(y_pred), axis=-1)
+    log_loss = -tf.reduce_sum(y_true * tf.log(y_pred))
     return log_loss
 
 

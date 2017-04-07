@@ -12,6 +12,7 @@ from cv2grid import CV2Grid
 import KittiLabel
 from Tracklet import Tracklet, bounding_box_for_tracklet
 from FeatureVectorEncoderLidarBV import FeatureVectorEncoderLidarBV
+from Utils import progress_bar
 
 
 def get_stem(path):
@@ -130,3 +131,10 @@ if __name__ == "__main__":
         g.paste_img(imageutils.flip_img_y(img), (row,col))
 
     g.save("overview.png")
+
+    if False:
+        gen = Generator(stems, batch_size=32, draw_ground_truth=False)
+        num_batches = len(stems) // 32
+        for i in range(num_batches):
+            progress_bar(i, num_batches)
+            X, y = gen.next()

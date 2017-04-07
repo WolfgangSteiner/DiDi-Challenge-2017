@@ -37,8 +37,7 @@ def orientation_indicator(bbox):
     return np.stack([tip, bbox[4], bbox[5], bbox[6], bbox[7]], axis=0)
 
 
-def draw_bounding_box_bv(image, bbox):
-    color = (0,0,255)
+def draw_bounding_box_bv(image, bbox, color=(0,0,255)):
     drawing.draw_line(image, bbox[0,0:2], bbox[1,0:2], color)
     drawing.draw_line(image, bbox[1,0:2], bbox[5,0:2], color)
     drawing.draw_line(image, bbox[5,0:2], bbox[4,0:2], color)
@@ -48,8 +47,7 @@ def draw_bounding_box_bv(image, bbox):
         drawing.draw_line(image, tip[0,0:2], tip[i,0:2], color)
 
 
-def draw_bounding_box_image(image, bbox):
-    color = (0,0,255)
+def draw_bounding_box_image(image, bbox, color=(0,0,255)):
     drawing.draw_line(image, bbox[0,0:2], bbox[1,0:2], color)
     drawing.draw_line(image, bbox[1,0:2], bbox[2,0:2], color)
     drawing.draw_line(image, bbox[2,0:2], bbox[3,0:2], color)
