@@ -1,6 +1,6 @@
 from Training import Training
 t = Training(batch_size=4)
-t.lr = 0.025
+t.lr = 0.01
 t.use_batchnorm = True
 t.wreg = 0.0
 t.winit='normal'
