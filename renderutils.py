@@ -30,9 +30,9 @@ def transformation_velo_to_bv(img_size, x_range, y_range):
 
 def orientation_indicator(bbox):
     orientation_vector = bbox[4] - bbox[0]
-    orientation_vector /= np.linalg.norm(orientation_vector)
+    orientation_vector /= max(1.0, np.linalg.norm(orientation_vector))
     anchor_point = 0.25 * (bbox[4] + bbox[5] + bbox[6] + bbox[7])
-    tip_length = np.linalg.norm(bbox[4] - bbox[5])
+    tip_length = max(1.0, np.linalg.norm(bbox[4] - bbox[5]))
     tip = anchor_point + tip_length * orientation_vector
     return np.stack([tip, bbox[4], bbox[5], bbox[6], bbox[7]], axis=0)
 
