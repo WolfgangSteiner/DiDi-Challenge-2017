@@ -1,6 +1,6 @@
 from Tracklet import Tracklet
 import numpy as np
-
+import math
 
 class FeatureVectorEncoderLidarBV(object):
     '''
@@ -29,6 +29,17 @@ class FeatureVectorEncoderLidarBV(object):
         return 7;
 
 
+    def normalize_angle(self, phi):
+        while phi > math.pi:
+            phi -= 2 * math.pi
+
+        while phi < -math.pi:
+            phi += 2 * math.pi
+
+        return phi
+
+
+
     def encode_tracklets(self, tracklets):
         result = np.zeros((self.ny, self.nx, self.num_features()), np.float32)
 
@@ -44,7 +55,8 @@ class FeatureVectorEncoderLidarBV(object):
 
             iy = int((py - self.ymin) / self.delta_y)
             #iy = max(0, min(self.ny - 1, iy))
+            phi = self.normalize_angle(t.rotation_z)
 
-            result[iy,ix] = [1.0, px, py, l, w, h, t.rotation_z]
+            result[iy,ix] = [1.0, px, py, abs(l), abs(w), abs(h), phi]
 
         return result.reshape((self.ny*self.nx*self.num_features(),))

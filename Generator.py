@@ -132,6 +132,11 @@ if __name__ == "__main__":
 
     g.save("overview.png")
 
+    y = y[0].reshape((-1,7))
+    for yi in y:
+        if (yi[0] > 0.0):
+            print(yi)
+
     if False:
         gen = Generator(stems, batch_size=32, draw_ground_truth=False)
         num_batches = len(stems) // 32
