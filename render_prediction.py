@@ -93,15 +93,21 @@ def draw_bounding_boxes_image(image, tracklets, frame_idx, transformation, color
         renderutils.draw_bounding_box_image(image, project_bbox(bbox), color)
 
 
+def draw_tracklets_image(image, tracklets, transformation, color):
+    for t in tracklets:
+        bbox = bounding_box_for_tracklet(t)
+        bbox = transformation.transform(bbox)
+        renderutils.draw_bounding_box_image(image, project_bbox(bbox), color)
+
+
 def get_tracklets_from_prediction(y_pred):
     tracklets = []
     for yi in y_pred.reshape((-1,7)):
-        if yi[0] > 0.5:
-            print(yi)
+        if yi[0] > 0.75:
             px,py = yi[1:3]
             l,w,h = yi[3:6]
             rotation_z = yi[6]
-            tracklets.append(Tracklet((px,py,0.0),(l,w,h), rotation_z))
+            tracklets.append(Tracklet((px,py,-1.73),(l,w,h), rotation_z))
 
     print("found %d tracklets" % len(tracklets))
     return tracklets
@@ -125,6 +131,7 @@ for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
     fv_height = lidar_fv[:,:,2]
     img = np.array(stereo_pair.right)
     draw_bounding_boxes_image(img, tracklets, i, view_transformation, cvcolor.red)
+    draw_tracklets_image(img, tracklets_pred, view_transformation, cvcolor.green)
 
 
     im_height,im_width = img.shape[0:2]
