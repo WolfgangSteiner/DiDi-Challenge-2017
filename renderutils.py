@@ -42,9 +42,9 @@ def draw_bounding_box_bv(image, bbox, color=(0,0,255)):
     drawing.draw_line(image, bbox[1,0:2], bbox[5,0:2], color)
     drawing.draw_line(image, bbox[5,0:2], bbox[4,0:2], color)
     drawing.draw_line(image, bbox[4,0:2], bbox[0,0:2], color)
-    tip = orientation_indicator(bbox)
-    for i in range(1,3):
-        drawing.draw_line(image, tip[0,0:2], tip[i,0:2], color)
+    tip = bbox[8]
+    for i in range(4,6):
+        drawing.draw_line(image, tip[0:2], bbox[i,0:2], color)
 
 
 def draw_bounding_box_image(image, bbox, color=(0,0,255)):
@@ -63,6 +63,6 @@ def draw_bounding_box_image(image, bbox, color=(0,0,255)):
     drawing.draw_line(image, bbox[2,0:2], bbox[6,0:2], color)
     drawing.draw_line(image, bbox[3,0:2], bbox[7,0:2], color)
 
-    tip = orientation_indicator(bbox)
-    for i in range(1,5):
-        drawing.draw_line(image, tip[0,0:2], tip[i,0:2], color)
+    tip = bbox[8]
+    for i in range(4,8):
+        drawing.draw_line(image, tip[0:2], bbox[i,0:2], color)

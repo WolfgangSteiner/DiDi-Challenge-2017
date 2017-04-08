@@ -26,7 +26,7 @@ def read_labels(file_name, types=("Car","Van")):
 
 
 def tracklet_for_label(label, t_cam_to_velo):
-    rotation_z = label.rotation_y + math.pi / 2
+    rotation_z = math.pi / 2 - label.rotation_y
     px,py,pz = label.location
     h,w,l = label.dimensions
     position = t_cam_to_velo.transform(np.array([px,py,pz,1.0]))

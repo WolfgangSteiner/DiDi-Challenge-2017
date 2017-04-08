@@ -51,12 +51,23 @@ class FeatureVectorEncoderLidarBV(object):
 
             l, w, h = t.size
             ix = int((px - self.xmin) / self.delta_x)
+            prior_x = ix * self.delta_x + self.xmin
+            dx = px - prior_x
             #ix = max(0, min(self.nx - 1, ix))
 
             iy = int((py - self.ymin) / self.delta_y)
+            prior_y = iy * self.delta_y + self.ymin
+            dy = py - prior_y
             #iy = max(0, min(self.ny - 1, iy))
+
             phi = self.normalize_angle(t.rotation_z)
 
-            result[iy,ix] = [1.0, px, py, abs(l), abs(w), abs(h), phi]
+            # The bird's eye view feature map has a different coordinate system than the
+            # lidar coordinate system.
+            ix_bv = 32 - 1 - iy
+            iy_bv = ix
+
+
+            result[iy_bv,ix_bv] = [1.0, dx, dy, abs(l), abs(w), abs(h), phi]
 
         return result.reshape((self.ny*self.nx*self.num_features(),))

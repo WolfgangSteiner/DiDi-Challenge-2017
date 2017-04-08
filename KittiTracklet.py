@@ -52,7 +52,7 @@ class KittiTrackletObject(object):
         bbox[2,:] = [-l/2,  w/2,   h, 1.0]
         bbox[3,:] = [-l/2, -w/2,   h, 1.0]
         bbox[4:8,:] = bbox[0:4,:] + [ l, 0.0, 0.0, 0.0]
-        rz = pose.rotation[2]
+        rz = -pose.rotation[2]
         t = Transformation()
         t.rotate_z(rz)
         t.translate(pose.translation)
@@ -61,10 +61,10 @@ class KittiTrackletObject(object):
 
     def tracklet_for_frame(self, frame_idx):
         pose = self.pose_for_frame(frame_idx)
-        px, py = pose.translation[0:2]
+        px, py, pz = pose.translation[0:3]
         h, w, l = self.size
-        rotation_z = pose.rotation[2]
-        return Tracklet((px,py), (l,w,h), rotation_z)
+        rotation_z = -pose.rotation[2]
+        return Tracklet((px,py,pz), (l,w,h), rotation_z)
 
 
 def get_float(node, tag):

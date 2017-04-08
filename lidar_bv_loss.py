@@ -28,12 +28,15 @@ def loc_loss(y_true, y_pred):
     '''
     Calculates the smooth l1 loss between the parameters of ground truth and prediction.
     Only the entries of the tensor that belong to a positive sample are considered.
+
+    Returns:
+       Localization loss, a tensor of shape (batch, n_boxes_total)
     '''
     residual = (y_true[:,:,1:] - y_pred[:,:,1:])
-    absolute_loss = tf.reduce_sum(tf.abs(residual), axis=-1) * y_true[:,:,0]
-    square_loss = tf.reduce_sum(0.5 * (residual)**2, axis=-1) * y_true[:,:,0]
+    absolute_loss = tf.abs(residual)
+    square_loss = 0.5 * (residual)**2
     l1_loss = tf.where(tf.less(absolute_loss, 1.0), square_loss, absolute_loss - 0.5)
-    return tf.reduce_sum(l1_loss)
+    return tf.reduce_sum(l1_loss, axis=-1)
 
 
 def log_loss(y_true, y_pred):
@@ -67,16 +70,33 @@ def multitask_loss(y_true, y_pred):
     y_shape = (-1,nx*ny,num_classes+num_parameters)
     y_true = tf.reshape(y_true, y_shape)
     y_pred = tf.reshape(y_pred, y_shape)
-    positives = tf.to_float(tf.reduce_max(y_true[:,:,0], axis=-1))
-    n_positives = tf.reduce_sum(positives)
+    positives = y_true[:,:,0]
 
-    y_true_conf = y_true[:,0]
-    y_true_params = y_true[:,1:]
-    y_pred_conf = y_pred[:,0]
-    y_pred_params = y_pred[:,1:]
+    # number of positive boxes per example
+    # size (batch_size)
+    n_positives = tf.reduce_sum(positives,axis=-1)
 
-    conf_loss = smooth_L1_loss(y_true_conf, y_pred_conf)
+    y_true_conf = y_true[:,:,0]
+    y_pred_conf = tf.sigmoid(y_pred[:,:,0])
+
+    confidence_loss = -y_true_conf * tf.log(tf.maximum(1e-15, y_pred_conf)) \
+        - (1 - y_true_conf) * tf.log(tf.maximum(1e-15, 1.0 - y_pred_conf))
+    confidence_loss = tf.reduce_sum(confidence_loss, axis=-1)
+
+    localization_loss = loc_loss(y_true, y_pred) * positives
+    localization_loss = tf.reduce_sum(localization_loss, axis=-1)
+
+
+    total_loss = (1.0 / tf.maximum(n_positives, 1)) * (confidence_loss + localization_loss)
+
+#    zero_loss = tf.zeros_like(localization_loss)
+#    total_loss = tf.where(tf.equal(n_positives, 0), zero_loss, total_loss)
+
+    return total_loss
+
     #loc_loss = smooth_L1_loss(y_true_params, y_pred_params)
     #confidence_loss = log_loss(y_true[:,:,0], y_pred[:,:,0])
-
-    return 1.0 / tf.maximum(1.0, n_positives) * (1000.0 * conf_loss + loc_loss(y_true, y_pred))
+    #if n_positives == 0:
+    #    return tf.zeros_like(y_true[:,0,0])
+    #else:
+    #    return
