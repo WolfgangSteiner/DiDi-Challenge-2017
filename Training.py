@@ -66,7 +66,7 @@ class Training(object):
             loss=loss_function)
 
 
-    def conv(self, depth, filter_size=3, strides=(1,1)):
+    def conv(self, depth, filter_size=3, strides=(1,1), activation='elu'):
         conv_layer = Conv2D(
             depth, (filter_size, filter_size), padding='same',
             kernel_regularizer=regularizer(self.wreg),
@@ -78,8 +78,11 @@ class Training(object):
         self.model.add(conv_layer)
         if self.use_batchnorm:
             self.model.add(BatchNormalization())
-        self.model.add(Activation('relu'))
+        if activation is not None:
+            self.model.add(Activation('elu'))
+
         self.current_shape[2] = depth
+
 
     def flatten(self):
         self.model.add(Flatten())
@@ -101,7 +104,7 @@ class Training(object):
         if self.use_batchnorm:
             self.model.add(BatchNormalization())
 
-        self.model.add(Activation('relu'))
+        self.model.add(Activation('elu'))
 
 
     def classifier(self, nx=32, ny=32, num_parameters=7):
