@@ -26,6 +26,7 @@ parser.add_argument('model', help="Keras model to render.")
 parser.add_argument('-d', dest="basedir", default="./kitti", help="Name of the data directory.")
 parser.add_argument('-1', dest="single_frame", action="store_true")
 parser.add_argument('--threshold', dest="threshold", type=float, default=0.95)
+parser.add_argument('--fps', dest="fps", type=int, default=10)
 args = parser.parse_args()
 
 r = range(1) if args.single_frame else None
@@ -212,7 +213,7 @@ print("Per frame: %.4fs" % time_per_frame)
 
 if len(frames) > 1:
     print("Creating video...")
-    clip = mpy.ImageSequenceClip(frames, fps=10)
+    clip = mpy.ImageSequenceClip(frames, fps=args.fps)
     clip.write_videofile("test.mp4")
 else:
     cv2.imwrite("out.png", frames[0])
