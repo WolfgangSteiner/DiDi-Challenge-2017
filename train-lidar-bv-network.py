@@ -1,6 +1,6 @@
 from Training import Training
 t = Training(batch_size=16)
-t.lr = 0.01
+t.lr = 0.001
 t.use_batchnorm = True
 t.wreg = 0.0
 t.winit='normal'
@@ -16,7 +16,7 @@ t.maxpool()
 t.conv(64,3)
 #t.conv(64,3)
 t.maxpool()
-t.conv(7,1)
+t.conv(7,1, activation=None)
 
 t.flatten()
 options = {}
