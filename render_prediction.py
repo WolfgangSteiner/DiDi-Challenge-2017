@@ -22,7 +22,7 @@ from Tracklet import Tracklet, bounding_box_for_tracklet
 parser = argparse.ArgumentParser()
 parser.add_argument('date', help="Date of the drive, format : YYYY_MM_DD.")
 parser.add_argument('drive', help="Number of the drive.", type=int)
-parser.add_argument('model', help="Keras model to render.")
+parser.add_argument('--model', help="Keras model to render.", default=None)
 parser.add_argument('-d', dest="basedir", default="./kitti", help="Name of the data directory.")
 parser.add_argument('-1', dest="single_frame", action="store_true")
 parser.add_argument('--threshold', dest="threshold", type=float, default=0.95)
@@ -118,27 +118,26 @@ def get_tracklets_from_prediction(y_pred):
     print("found %d tracklets" % len(tracklets))
     return tracklets
 
-
-model = keras.models.load_model(args.model, custom_objects={'multitask_loss': multitask_loss})
+if args.model is not None:
+    model = keras.models.load_model(args.model, custom_objects={'multitask_loss': multitask_loss})
+else:
+    model = None
 
 for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
     progress_bar(i, len(data.velo))
-    lidar_bv = create_birds_eye_view(velo, lidar_src_x_range, lidar_src_y_range, lidar_src_z_range, [bv_w,bv_h])
-    bv_intensity = lidar_bv[:,:,0]
-    bv_density = lidar_bv[:,:,1]
-    bv_height = lidar_bv[:,:,2]
+    img = np.array(stereo_pair.left)
+    lidar_bv = create_birds_eye_view(velo, img, lidar_src_x_range, lidar_src_y_range, lidar_src_z_range, [bv_w,bv_h], view_transformation)
 
-    y_pred = model.predict(lidar_bv.reshape((1,512,512,3)))[0]
-    tracklets_pred = get_tracklets_from_prediction(y_pred)
+    if model:
+        y_pred = model.predict(lidar_bv.reshape((1,512,512,3)))[0]
+        tracklets_pred = get_tracklets_from_prediction(y_pred)
+
     tracklets_true = tracklets_for_frame(tracklets_kitti, i)
 
     lidar_fv = create_front_view(velo, [fv_w,fv_h], -1.5, 1.0, 0.08, 0.2)
     fv_intensity = lidar_fv[:,:,0]
     fv_distance = lidar_fv[:,:,1]
     fv_height = lidar_fv[:,:,2]
-    img = np.array(stereo_pair.right)
-    draw_tracklets_image(img, tracklets_true, view_transformation, cvcolor.red)
-    draw_tracklets_image(img, tracklets_pred, view_transformation, cvcolor.green)
 
 
     im_height,im_width = img.shape[0:2]
@@ -148,26 +147,24 @@ for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
     frame_height = im_height + bv_h + fv_h + 2 * text_height
     frame = imageutils.new_img((frame_width,frame_height))
 
+
+    bv_img = (lidar_bv[:,:,0:3] * 255).astype(np.uint8)
+    camera_bv_img = (lidar_bv[:,:,3:6] * 255).astype(np.uint8)
+
+    draw_tracklets_image(img, tracklets_true, view_transformation, cvcolor.red)
+    draw_tracklets_bv(bv_img, tracklets_true, lidar_src_x_range, lidar_src_y_range, cvcolor.red)
+    draw_tracklets_bv(camera_bv_img, tracklets_true, lidar_src_x_range, lidar_src_y_range,cvcolor.red)
+
+    if model:
+        draw_tracklets_image(img, tracklets_pred, view_transformation, cvcolor.green)
+        draw_tracklets_bv(bv_img, tracklets_pred, lidar_src_x_range, lidar_src_y_range, cvcolor.green)
+        draw_tracklets_bv(camera_bv_img, tracklets_pred, lidar_src_x_range, lidar_src_y_range, cvcolor.green)
+
     im_offset = (frame_width - im_width) // 2
     imageutils.paste_img(frame, np.array(img), [im_offset, 0])
 
-    bv_intensity = renderutils.image_from_map(bv_intensity)
-    draw_tracklets_bv(bv_intensity, tracklets_true, lidar_src_x_range, lidar_src_y_range, cvcolor.red)
-    draw_tracklets_bv(bv_intensity, tracklets_pred, lidar_src_x_range, lidar_src_y_range, cvcolor.green)
-
-    bv_density = renderutils.image_from_map(bv_density)
-    draw_tracklets_bv(bv_density, tracklets_true, lidar_src_x_range, lidar_src_y_range, cvcolor.red)
-    draw_tracklets_bv(bv_density, tracklets_pred, lidar_src_x_range, lidar_src_y_range, cvcolor.green)
-
-    bv_height = renderutils.image_from_map(bv_height)
-    draw_tracklets_bv(bv_height, tracklets_true, lidar_src_x_range, lidar_src_y_range, cvcolor.red)
-    draw_tracklets_bv(bv_height, tracklets_pred, lidar_src_x_range, lidar_src_y_range, cvcolor.green)
-
-
     y = im_height + text_height
-    imageutils.paste_img(frame, imageutils.flip_img_y(bv_intensity), [0,y])
-    imageutils.paste_img(frame, imageutils.flip_img_y(bv_density), [bv_w,y])
-    imageutils.paste_img(frame, imageutils.flip_img_y(bv_height), [2*bv_w,y])
+    imageutils.paste_img(frame, imageutils.flip_img_y(bv_img), [0,y])
 
     y += bv_h + text_height
     imageutils.paste_img(frame, renderutils.image_from_map(fv_intensity), [0,y])
@@ -176,10 +173,10 @@ for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
 
 
     tr = drawing.TextRenderer(frame)
-    for i,s in enumerate(("Intensity", "Density", "Height")):
-        x = bv_w // 2 + i * bv_w
-        y = im_height + text_offset
-        tr.text_at(s, (x,y), horizontal_align="center")
+    # for i,s in enumerate(("Intensity", "Density", "Height")):
+    #     x = bv_w // 2 + i * bv_w
+    #     y = im_height + text_offset
+    #     tr.text_at(s, (x,y), horizontal_align="center")
 
     for i,s in enumerate(("Intensity", "Distance", "Height")):
         x = fv_w // 2 + i * fv_w
