@@ -8,10 +8,13 @@ from MV3DFeatures import create_birds_eye_view, create_front_view
 from Utils import progress_bar
 import drawing
 import time
-from KittiTracklet import parse_tracklets, bounding_boxes_for_frame
+from KittiTracklet import parse_tracklets, tracklets_for_frame
 from VectorMath import *
 import Calibration
 import renderutils
+from Tracklet import Tracklet, bounding_box_for_tracklet
+import cvcolor
+
 
 # The range argument is optional - default is None, which loads the whole dataset
 
@@ -29,7 +32,7 @@ data.load_rgb(format='cv2')
 
 
 frames = []
-tracklets = parse_tracklets("%s/%s/%s_drive_%04d_sync/tracklet_labels.xml" %(args.basedir, args.date, args.date, args.drive))
+tracklets_kitti = parse_tracklets("%s/%s/%s_drive_%04d_sync/tracklet_labels.xml" %(args.basedir, args.date, args.date, args.drive))
 T_velo_cam = Calibration.read_calibration_matrix_velo_to_cam("%s/%s/calib_velo_to_cam.txt" % (args.basedir, args.date))
 
 cam_to_cam_file = "%s/%s/calib_cam_to_cam.txt" % (args.basedir, args.date)
@@ -44,11 +47,9 @@ view_transformation.add_transformation(P_rect)
 start_time = time.time()
 bv_w,bv_h = 512,512
 fv_w,fv_h = 512,64
-src_x_range = [-25.6, 25.6]
-z_min = -1.5
-y_min = 0.0
-src_y_range = [y_min, y_min + 51.2]
-src_z_range = [-1.74, 0.0]
+lidar_src_x_range = [0, 51.2]
+lidar_src_y_range = [-25.6, 25.6]
+lidar_src_z_range = [-1.74, 0.0]
 
 
 def transform_bounding_box_bv(bbox, img_size, x_range, y_range):
@@ -56,32 +57,36 @@ def transform_bounding_box_bv(bbox, img_size, x_range, y_range):
     return t.transform(bbox)
 
 
-def draw_bounding_boxes_bv(image, tracklets, frame_idx, x_range, y_range):
+def draw_tracklets_bv(image, tracklets, x_range, y_range, color):
     img_size = imageutils.img_size(image)
-    for bbox in bounding_boxes_for_frame(tracklets, frame_idx):
+    for t in tracklets:
+        bbox = bounding_box_for_tracklet(t)
         bbox = transform_bounding_box_bv(bbox, img_size, x_range, y_range)
-        renderutils.draw_bounding_box_bv(image, bbox)
+        renderutils.draw_bounding_box_bv(image, bbox, color)
 
 
 def project_bbox(bbox):
-    projected_bbox = np.zeros((8,2))
-    w = 1392
+    projected_bbox = np.zeros((bbox.shape[0],2))
     for i,v in enumerate(bbox):
-        projected_bbox[i,0] = bbox[i,0] / bbox[i,2] / bbox[i,3]
-        projected_bbox[i,1] = bbox[i,1] / bbox[i,2] / bbox[i,3]
+        x, y, z, w = bbox[i]
+        z = max(z, 0.1)
+        projected_bbox[i,0] = x / z / w
+        projected_bbox[i,1] = y / z / w
 
     return projected_bbox
 
 
-def draw_bounding_boxes_image(image, tracklets, frame_idx, transformation):
-    for bbox in bounding_boxes_for_frame(tracklets, frame_idx):
+def draw_tracklets_image(image, tracklets, transformation, color):
+    for t in tracklets:
+        bbox = bounding_box_for_tracklet(t)
+        assert bbox.shape[0] == 9
         bbox = transformation.transform(bbox)
-        renderutils.draw_bounding_box_image(image, project_bbox(bbox))
+        renderutils.draw_bounding_box_image(image, project_bbox(bbox), color)
 
 
 for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
     progress_bar(i, len(data.velo))
-    lidar_bv = create_birds_eye_view(velo, src_x_range, src_y_range, src_z_range, [bv_w,bv_h])
+    lidar_bv = create_birds_eye_view(velo, lidar_src_x_range, lidar_src_y_range, lidar_src_z_range, [bv_h,bv_w])
     bv_intensity = lidar_bv[:,:,0]
     bv_density = lidar_bv[:,:,1]
     bv_height = lidar_bv[:,:,2]
@@ -91,7 +96,9 @@ for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
     fv_distance = lidar_fv[:,:,1]
     fv_height = lidar_fv[:,:,2]
     img = np.array(stereo_pair.right)
-    draw_bounding_boxes_image(img, tracklets, i, view_transformation)
+
+    tracklets_true = tracklets_for_frame(tracklets_kitti, i)
+    draw_tracklets_image(img, tracklets_true, view_transformation, cvcolor.red)
 
 
     im_height,im_width = img.shape[0:2]
@@ -105,13 +112,13 @@ for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
     imageutils.paste_img(frame, np.array(img), [im_offset, 0])
 
     bv_intensity = renderutils.image_from_map(bv_intensity)
-    draw_bounding_boxes_bv(bv_intensity, tracklets, i, src_x_range, src_y_range)
+    draw_tracklets_bv(bv_intensity, tracklets_true, lidar_src_x_range, lidar_src_y_range, cvcolor.red)
 
     bv_density = renderutils.image_from_map(bv_density)
-    draw_bounding_boxes_bv(bv_density, tracklets, i, src_x_range, src_y_range)
+    draw_tracklets_bv(bv_density, tracklets_true, lidar_src_x_range, lidar_src_y_range, cvcolor.red)
 
     bv_height = renderutils.image_from_map(bv_height)
-    draw_bounding_boxes_bv(bv_height, tracklets, i, src_x_range, src_y_range)
+    draw_tracklets_bv(bv_height, tracklets_true, lidar_src_x_range, lidar_src_y_range, cvcolor.red)
 
 
     y = im_height + text_height

@@ -51,23 +51,14 @@ view_transformation.add_transformation(P_rect)
 start_time = time.time()
 bv_w,bv_h = 512,512
 fv_w,fv_h = 512,64
-src_x_range = [-25.6, 25.6]
-z_min = -1.5
-y_min = 0.0
-src_y_range = [y_min, y_min + 51.2]
-src_z_range = [-1.74, 0.0]
+lidar_src_x_range = [0.0, 51.2]
+lidar_src_y_range = [-25.6, 25.6]
+lidar_src_z_range = [-1.74, 0.0]
 
 
 def transform_bounding_box_bv(bbox, img_size, x_range, y_range):
     t = renderutils.transformation_velo_to_bv(img_size, x_range, y_range)
     return t.transform(bbox)
-
-
-def draw_bounding_boxes_bv(image, tracklets, frame_idx, x_range, y_range, color):
-    img_size = imageutils.img_size(image)
-    for bbox in bounding_boxes_for_frame(tracklets, frame_idx):
-        bbox = transform_bounding_box_bv(bbox, img_size, x_range, y_range)
-        renderutils.draw_bounding_box_bv(image, bbox, color)
 
 
 def draw_tracklets_bv(image, tracklets, x_range, y_range, color):
@@ -81,7 +72,6 @@ def draw_tracklets_bv(image, tracklets, x_range, y_range, color):
 
 def project_bbox(bbox):
     projected_bbox = np.zeros((bbox.shape[0],2))
-    w = 1392
     for i,v in enumerate(bbox):
         x, y, z, w = bbox[i]
         z = max(z, 0.1)
@@ -89,12 +79,6 @@ def project_bbox(bbox):
         projected_bbox[i,1] = y / z / w
 
     return projected_bbox
-
-
-def draw_bounding_boxes_image(image, tracklets, frame_idx, transformation, color):
-    for bbox in bounding_boxes_for_frame(tracklets, frame_idx):
-        bbox = transformation.transform(bbox)
-        renderutils.draw_bounding_box_image(image, project_bbox(bbox), color)
 
 
 def draw_tracklets_image(image, tracklets, transformation, color):
@@ -139,7 +123,7 @@ model = keras.models.load_model(args.model, custom_objects={'multitask_loss': mu
 
 for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
     progress_bar(i, len(data.velo))
-    lidar_bv = create_birds_eye_view(velo, src_x_range, src_y_range, src_z_range, [bv_w,bv_h])
+    lidar_bv = create_birds_eye_view(velo, lidar_src_x_range, lidar_src_y_range, lidar_src_z_range, [bv_w,bv_h])
     bv_intensity = lidar_bv[:,:,0]
     bv_density = lidar_bv[:,:,1]
     bv_height = lidar_bv[:,:,2]
@@ -168,16 +152,16 @@ for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
     imageutils.paste_img(frame, np.array(img), [im_offset, 0])
 
     bv_intensity = renderutils.image_from_map(bv_intensity)
-    draw_tracklets_bv(bv_intensity, tracklets_true, src_x_range, src_y_range, cvcolor.red)
-    draw_tracklets_bv(bv_intensity, tracklets_pred, src_x_range, src_y_range, cvcolor.green)
+    draw_tracklets_bv(bv_intensity, tracklets_true, lidar_src_x_range, lidar_src_y_range, cvcolor.red)
+    draw_tracklets_bv(bv_intensity, tracklets_pred, lidar_src_x_range, lidar_src_y_range, cvcolor.green)
 
     bv_density = renderutils.image_from_map(bv_density)
-    draw_tracklets_bv(bv_density, tracklets_true, src_x_range, src_y_range, cvcolor.red)
-    draw_tracklets_bv(bv_density, tracklets_pred, src_x_range, src_y_range, cvcolor.green)
+    draw_tracklets_bv(bv_density, tracklets_true, lidar_src_x_range, lidar_src_y_range, cvcolor.red)
+    draw_tracklets_bv(bv_density, tracklets_pred, lidar_src_x_range, lidar_src_y_range, cvcolor.green)
 
     bv_height = renderutils.image_from_map(bv_height)
-    draw_tracklets_bv(bv_height, tracklets_true, src_x_range, src_y_range, cvcolor.red)
-    draw_tracklets_bv(bv_height, tracklets_pred, src_x_range, src_y_range, cvcolor.green)
+    draw_tracklets_bv(bv_height, tracklets_true, lidar_src_x_range, lidar_src_y_range, cvcolor.red)
+    draw_tracklets_bv(bv_height, tracklets_pred, lidar_src_x_range, lidar_src_y_range, cvcolor.green)
 
 
     y = im_height + text_height

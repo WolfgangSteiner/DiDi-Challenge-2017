@@ -2,6 +2,21 @@ from _MV3DFeatures import _create_birds_eye_view, _create_front_view
 import numpy as np
 
 def create_birds_eye_view(velo, src_x_range, src_y_range, src_z_range, dst_size):
+    '''
+    Create bird's eye feature maps from velodyne lidar point cloud data.
+
+    Arguments:
+        velo:
+            np.array of point cloud data points, shape (-1,4)
+
+        src_x_range, src_y_range, src_z_range:
+            coordinate ranges in KITTI lidar coordinates specifying the points that should be
+            included in the feature maps.
+
+        dst_size:
+            size of the resulting feature maps in pixels.
+    '''
+
     src_x_range = np.array(src_x_range, np.float32)
     src_y_range = np.array(src_y_range, np.float32)
     src_z_range = np.array(src_z_range, np.float32)

@@ -53,21 +53,23 @@ float get_float(PyObject* apFloat)
 //----------------------------------------------------------------------------------------------
 
 int calc_offset_bv(
-  float x, float y,
+  float lidar_x, float lidar_y,
   const std::pair<float,float>& aXRange, const std::pair<float,float>& aYRange,
   float aDeltaX, float aDeltaY,
   int aWidth,
   int aNumFeatureMaps)
 {
-  if (x < aXRange.first || x >= aXRange.second || y < aYRange.first || y >=aYRange.second
-      || std::abs(x) > y)
+  if (lidar_x < aXRange.first || lidar_x >= aXRange.second
+      || lidar_y < aYRange.first || lidar_y >=aYRange.second
+      || std::abs(lidar_y) > lidar_x)
   {
     return -1;
   }
   else
   {
-    const int px = (x - aXRange.first) / aDeltaX;
-    const int py = (y - aYRange.first) / aDeltaY;
+    // transform from lidar to bv bitmap coordinates
+    const int py = (lidar_x - aXRange.first) / aDeltaX;
+    const int px = (-lidar_y - aYRange.first) / aDeltaY;
 
     return (py * aWidth + px) * aNumFeatureMaps;
   }
@@ -104,30 +106,33 @@ void _create_birds_eye_view(
   const float kZMin = kSrcZRange.first;
   const float kZMax = kSrcZRange.second;
 
-  const float kDeltaX = (kSrcXRange.second - kSrcXRange.first) / w;
-  const float kDeltaY = (kSrcYRange.second - kSrcYRange.first) / h;
+  //  [wst] kSrcXRange, kSrcYRange are in LIDAR coordinates.
+  // The resulting feature map will have x, y coordinates like a bitmap.
+  // Thats' why we swap w,h here:
+  const float kDeltaX = (kSrcXRange.second - kSrcXRange.first) / h;
+  const float kDeltaY = (kSrcYRange.second - kSrcYRange.first) / w;
 
   for (int i = 0; i < kNumLidarPoints; ++i)
   {
     const float* pPoint = &pPointData[i * kPointSize];
-    const float x = -pPoint[1];
-    const float y = pPoint[0];
-    const float z = pPoint[2];
-    const float r = pPoint[3];
+    const float lidar_x = pPoint[0];
+    const float lidar_y = pPoint[1];
+    const float lidar_z = pPoint[2];
+    const float lidar_r = pPoint[3];
 
-    if (z > kZMax || z < kZMin)
+    if (lidar_z > kZMax || lidar_z < kZMin)
     {
       continue;
     }
 
-    const int kOffset = calc_offset_bv(x,y, kSrcXRange, kSrcYRange, kDeltaX, kDeltaY, w, kNumFeatureMaps);
+    const int kOffset = calc_offset_bv(lidar_x, lidar_y, kSrcXRange, kSrcYRange, kDeltaX, kDeltaY, w, kNumFeatureMaps);
 
     if (kOffset > -1)
     {
-      if (z > pFeatureMapPtr[kOffset + 2])
+      if (lidar_z > pFeatureMapPtr[kOffset + 2])
       {
-        pFeatureMapPtr[kOffset+2] = z; // height
-	      pFeatureMapPtr[kOffset] = r;  // intensity
+        pFeatureMapPtr[kOffset+2] = lidar_z; // height
+	      pFeatureMapPtr[kOffset] = lidar_r;  // intensity
       }
       pFeatureMapPtr[kOffset+1]++;  // density
     }

@@ -16,6 +16,20 @@ def normalize_and_render_map(map):
 
 
 def transformation_velo_to_bv(img_size, x_range, y_range):
+    '''
+    Construct transformation matrix from KITTI velodyne coordinates to birs's eye feature map
+    pixel coordinates.
+
+    Arguments:
+    img_size:
+        size of the feature map in pixels [w,h]
+    x_range, y_range:
+        x,y range of the lidar points that are mapped to the feature map, in KITTI Lidar coordinates.
+
+    Returns:
+    An object of class Transformation
+    '''
+
     w,h = img_size
     x1,x2 = x_range
     y1,y2 = y_range
@@ -23,21 +37,25 @@ def transformation_velo_to_bv(img_size, x_range, y_range):
     t = Transformation()
     t.flip_xy()
     t.mirror_x()
-    t.translate(-x1,0,0)
+    t.translate(-y1,0,0)
     t.scale(factor)
     return t
 
 
-def orientation_indicator(bbox):
-    orientation_vector = bbox[4] - bbox[0]
-    orientation_vector /= max(1.0, np.linalg.norm(orientation_vector))
-    anchor_point = 0.25 * (bbox[4] + bbox[5] + bbox[6] + bbox[7])
-    tip_length = max(1.0, np.linalg.norm(bbox[4] - bbox[5]))
-    tip = anchor_point + tip_length * orientation_vector
-    return np.stack([tip, bbox[4], bbox[5], bbox[6], bbox[7]], axis=0)
-
-
 def draw_bounding_box_bv(image, bbox, color=(0,0,255)):
+    '''
+    Draw bounding box into an image of a bird's eye feature map.
+
+    Arguments:
+        image:
+            Destination bird's eye image.
+
+        bbox:
+            Bounding box with eight corner points and one point indicating the orientation.
+
+        color:
+            Color of the resulting bounding box image.
+    '''
     drawing.draw_line(image, bbox[0,0:2], bbox[1,0:2], color)
     drawing.draw_line(image, bbox[1,0:2], bbox[5,0:2], color)
     drawing.draw_line(image, bbox[5,0:2], bbox[4,0:2], color)
@@ -48,6 +66,20 @@ def draw_bounding_box_bv(image, bbox, color=(0,0,255)):
 
 
 def draw_bounding_box_image(image, bbox, color=(0,0,255)):
+    '''
+    Draw bounding box into a camera image.
+
+    Arguments:
+        image:
+            Destination camera image.
+
+        bbox:
+            Bounding box with eight corner points and one point indicating the orientation.
+            The coordinates are supposed to be projected into 2D space.
+
+        color:
+            Color of the resulting bounding box image.
+    '''
     drawing.draw_line(image, bbox[0,0:2], bbox[1,0:2], color)
     drawing.draw_line(image, bbox[1,0:2], bbox[2,0:2], color)
     drawing.draw_line(image, bbox[2,0:2], bbox[3,0:2], color)
