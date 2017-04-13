@@ -125,7 +125,7 @@ else:
 
 for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
     progress_bar(i, len(data.velo))
-    img = np.array(stereo_pair.left)
+    img = np.array(stereo_pair.right)
     lidar_bv = create_birds_eye_view(velo, img, lidar_src_x_range, lidar_src_y_range, lidar_src_z_range, [bv_w,bv_h], view_transformation)
 
     if model:
@@ -163,8 +163,13 @@ for i,(velo,stereo_pair) in enumerate(zip(data.velo,data.rgb)):
     im_offset = (frame_width - im_width) // 2
     imageutils.paste_img(frame, np.array(img), [im_offset, 0])
 
+    ground_img = renderutils.image_from_map(lidar_bv[:,:,1])
+
+
     y = im_height + text_height
     imageutils.paste_img(frame, imageutils.flip_img_y(bv_img), [0,y])
+    imageutils.paste_img(frame, imageutils.flip_img_y(camera_bv_img), [bv_w,y])
+    imageutils.paste_img(frame, imageutils.flip_img_y(renderutils.image_from_map(lidar_bv[:,:,1])), [2*bv_w,y])
 
     y += bv_h + text_height
     imageutils.paste_img(frame, renderutils.image_from_map(fv_intensity), [0,y])
