@@ -15,7 +15,7 @@ def normalize_and_render_map(map):
     return image_from_map(normalized_map)
 
 
-def transformation_velo_to_bv(img_size, x_range, y_range):
+def transformation_velo_to_bv(img_size, lidar_x_range, lidar_y_range):
     '''
     Construct transformation matrix from KITTI velodyne coordinates to birs's eye feature map
     pixel coordinates.
@@ -23,7 +23,7 @@ def transformation_velo_to_bv(img_size, x_range, y_range):
     Arguments:
     img_size:
         size of the feature map in pixels [w,h]
-    x_range, y_range:
+    lidar_x_range, lidar_y_range:
         x,y range of the lidar points that are mapped to the feature map, in KITTI Lidar coordinates.
 
     Returns:
@@ -31,9 +31,9 @@ def transformation_velo_to_bv(img_size, x_range, y_range):
     '''
 
     w,h = img_size
-    x1,x2 = x_range
-    y1,y2 = y_range
-    factor = w / (x2 - x1)
+    x1,x2 = lidar_x_range
+    y1,y2 = lidar_y_range
+    factor = h / (x2 - x1)
     t = Transformation()
     t.flip_xy()
     t.mirror_x()

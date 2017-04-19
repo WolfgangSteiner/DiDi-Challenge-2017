@@ -66,16 +66,15 @@ def Generator(
     idx = 0
     num_examples = len(file_stems)
     bv_size = [512,512]
-    src_x_range = [-25.6,25.6]
-    y_min = 0.0
-    src_y_range = [y_min, y_min + 51.2]
+    src_x_range = [0.0, 51.2]
+    src_y_range = [-25.6, 25.6]
     src_z_range = [-10.0, 10.0]
     T_velo_to_bv = renderutils.transformation_velo_to_bv(bv_size, src_x_range, src_y_range)
 
     # src_x_range, src_y_range are defined in bv coordinate system
     # The resulting tracklets will be encoded in the lidar corrdinate system, thus
     # the axes are swapped:
-    encoder = FeatureVectorEncoderLidarBV(src_y_range, src_x_range, [32,32])
+    encoder = FeatureVectorEncoderLidarBV(src_x_range, src_y_range, [32,32])
 
     while True:
         X = []
