@@ -1,3 +1,6 @@
+## Example Video
+https://www.youtube.com/watch?v=6exLh35T2GE
+
 ## Instructions
 ### To visualize KITTI driving:
 * Download data from http://www.cvlibs.net/datasets/kitti/raw_data.php, e.g.   
